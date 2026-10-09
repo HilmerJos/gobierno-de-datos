@@ -8,7 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-dist
+# dist incluido para permitir ejecucion directa en despliegue out-of-the-box
 dist-ssr
 *.local
 
