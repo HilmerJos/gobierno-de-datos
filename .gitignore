@@ -1,0 +1,36 @@
+# Dependencias Node.js
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python y Entornos Virtuales
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Bases de datos locales
+*.sqlite3
+*.db-journal
+sgd_sistema/backend/*.db
+
+# Archivos de entorno y credenciales
+.env
+!.env.example
+
+# Archivos temporales de subida
+sgd_sistema/uploads/*
+!sgd_sistema/uploads/.gitkeep
+
+# IDEs y SO
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini

@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SGD-Madurez | Sistema de Evaluación de Madurez y Plan de Acción de Gobierno de Datos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js para el Radar y Gráficos -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body class="theme-dark">
+  <div class="app-layout">
+    <!-- BARRA LATERAL / SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-badge">
+          <div class="brand-icon">
+            <i data-lucide="shield-check"></i>
+          </div>
+          <div class="brand-text">
+            <span class="brand-title">SGD-Madurez</span>
+            <span class="brand-subtitle">PCM • SGTD • CND</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="entity-card">
+        <div class="entity-badge">ENTIDAD EVALUADA</div>
+        <div class="entity-name" id="sidebar-entity-name">OTI - Oficina de TI</div>
+        <div class="entity-framework">Marco ENGD 2026–2030</div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-tab="dashboard">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Dashboard Ejecutivo</span>
+        </button>
+        <button class="nav-item" data-tab="matriz">
+          <i data-lucide="check-square"></i>
+          <span>Matriz de Diagnóstico</span>
+          <span class="nav-counter" id="nav-badge-respuestas">0/75</span>
+        </button>
+        <button class="nav-item" data-tab="evidencias">
+          <i data-lucide="folder-git-2"></i>
+          <span>Inventario de Evidencias</span>
+          <span class="nav-counter" id="nav-badge-evidencias">0</span>
+        </button>
+        <button class="nav-item" data-tab="plan">
+          <i data-lucide="target"></i>
+          <span>Plan de Acción</span>
+          <span class="nav-counter" id="nav-badge-iniciativas">5</span>
+        </button>
+        <button class="nav-item" data-tab="exportar">
+          <i data-lucide="download-cloud"></i>
+          <span>Exportación Oficial</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="status-indicator">
+          <span class="pulse-dot"></span>
+          <span>Motor Evaluador PCM Activo</span>
+        </div>
+        <button id="btn-toggle-theme" class="theme-toggle-btn" title="Alternar tema">
+          <i data-lucide="moon"></i>
+          <span id="theme-text">Modo Claro</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="main-content">
+      <!-- TOPBAR -->
+      <header class="topbar">
+        <div class="topbar-title-group">
+          <h1 id="page-title">Dashboard Ejecutivo de Madurez</h1>
+          <p id="page-subtitle">Monitoreo continuo de las 8 dimensiones y nivel institucional de gobierno de datos</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-outline" id="btn-quick-export">
+            <i data-lucide="file-spreadsheet"></i>
+            <span>Exportar Excel</span>
+          </button>
+          <button class="btn btn-primary" id="btn-nueva-evidencia-top">
+            <i data-lucide="plus-circle"></i>
+            <span>Subir Evidencia</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- VISTA 1: DASHBOARD -->
+      <section id="tab-dashboard" class="tab-view active">
+        <!-- KPI METRICS GRID -->
+        <div class="kpi-grid">
+          <div class="kpi-card accent-primary">
+            <div class="kpi-icon-wrap">
+              <i data-lucide="award"></i>
+            </div>
+            <div class="kpi-info">
+              <span class="kpi-label">Puntaje Final Global</span>
+              <div class="kpi-value-row">
+                <span class="kpi-value" id="kpi-puntaje-final">0.00</span>
+                <span class="kpi-max">/ 5.00</span>
+              </div>
+              <span class="kpi-subtext" id="kpi-nivel-texto">Nivel 0: No Iniciado</span>
+            </div>
+          </div>
+
+          <div class="kpi-card accent-cyan">
+            <div class="kpi-icon-wrap">
+              <i data-lucide="trending-up"></i>
+            </div>
+            <div class="kpi-info">
+              <span class="kpi-label">Brecha vs. Meta</span>
+              <div class="kpi-value-row">
+                <span class="kpi-value" id="kpi-brecha-global">3.00</span>
+                <span class="kpi-max">pts</span>
+              </div>
+              <span class="kpi-subtext">Meta Institucional: Nivel 3.00</span>
+            </div>
+          </div>
+
+          <div class="kpi-card accent-amber">
+            <div class="kpi-icon-wrap">
+              <i data-lucide="list-checks"></i>
+            </div>
+            <div class="kpi-info">
+              <span class="kpi-label">Avance Diagnóstico</span>
+              <div class="kpi-value-row">
+                <span class="kpi-value" id="kpi-avance-porcentaje">0%</span>
+              </div>
+              <span class="kpi-subtext" id="kpi-preguntas-respondidas">0 de 75 evaluadas</span>
+            </div>
+          </div>
+
+          <div class="kpi-card accent-emerald">
+            <div class="kpi-icon-wrap">
+              <i data-lucide="file-check"></i>
+            </div>
+            <div class="kpi-info">
+              <span class="kpi-label">Evidencias Sustentadas</span>
+              <div class="kpi-value-row">
+                <span class="kpi-value" id="kpi-total-evidencias">0</span>
+              </div>
+              <span class="kpi-subtext" id="kpi-evidencias-validadas">0 validadas</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- GRÁFICOS Y RADAR -->
+        <div class="charts-row">
+          <div class="card chart-card radar-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3 class="card-title">Radar de Madurez (8 Dimensiones PCM)</h3>
+                <p class="card-desc">Visualización multidimensional de capacidades frente al objetivo</p>
+              </div>
+              <span class="badge badge-pulse">En Tiempo Real</span>
+            </div>
+            <div class="chart-container radar-container">
+              <canvas id="radarChart"></canvas>
+            </div>
+          </div>
+
+          <div class="card chart-card brechas-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3 class="card-title">Desempeño y Brechas por Dimensión</h3>
+                <p class="card-desc">Comparativa entre nivel actual y meta mínima (3.00)</p>
+              </div>
+            </div>
+            <div class="chart-container">
+              <canvas id="barBrechasChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- TABLA RESUMEN POR DIMENSIÓN -->
+        <div class="card mt-6">
+          <div class="card-header">
+            <div class="card-title-group">
+              <h3 class="card-title">Estado de las 8 Dimensiones del Modelo Oficial</h3>
+              <p class="card-desc">Desglose de avance, puntaje promedio y brechas calculadas</p>
+            </div>
+            <button class="btn btn-sm btn-outline" id="btn-ir-matriz">Completar Matriz &rarr;</button>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Dimensión de Evaluación</th>
+                  <th>Preguntas</th>
+                  <th>Progreso</th>
+                  <th>Puntaje Obtenido</th>
+                  <th>Nivel Verbal</th>
+                  <th>Brecha (Meta 3.0)</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-resumen-dimensiones">
+                <!-- Se llena dinámicamente -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- VISTA 2: MATRIZ DE DIAGNÓSTICO -->
+      <section id="tab-matriz" class="tab-view">
+        <div class="matriz-header-bar">
+          <div class="dim-tabs-scroll" id="dim-tabs-container">
+            <!-- Pestañas D1 a D8 -->
+          </div>
+        </div>
+
+        <div class="dim-banner" id="dim-banner-info">
+          <div class="dim-banner-content">
+            <div class="dim-banner-code" id="dim-banner-code">D1</div>
+            <div>
+              <h2 class="dim-banner-title" id="dim-banner-title">Estrategia de Datos y Programa de Gestión de Datos</h2>
+              <p class="dim-banner-desc" id="dim-banner-desc">Evalúa el desarrollo de la EGD, toma de decisiones basada en datos y formalización del dato como activo estratégico.</p>
+            </div>
+          </div>
+          <div class="dim-banner-score">
+            <span class="dim-score-label">Puntaje Dimensión:</span>
+            <span class="dim-score-val" id="dim-banner-score">0.00</span>
+            <span class="dim-score-scale">/ 5.00</span>
+          </div>
+        </div>
+
+        <!-- LISTA DE PREGUNTAS -->
+        <div class="questions-list" id="questions-container">
+          <!-- Tarjetas de preguntas inyectadas por JS -->
+        </div>
+      </section>
+
+      <!-- VISTA 3: INVENTARIO DE EVIDENCIAS -->
+      <section id="tab-evidencias" class="tab-view">
+        <div class="card">
+          <div class="card-header flex-between">
+            <div class="card-title-group">
+              <h3 class="card-title">Inventario Centralizado de Evidencias Digitales</h3>
+              <p class="card-desc">Conforme a la estructura oficial requerida por la PCM / CND (10 columnas estándar)</p>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-outline" id="btn-export-evidencias-excel">
+                <i data-lucide="file-spreadsheet"></i> Descargar Excel Oficial
+              </button>
+              <button class="btn btn-primary" id="btn-abrir-modal-evidencia">
+                <i data-lucide="plus"></i> Nueva Evidencia
+              </button>
+            </div>
+          </div>
+
+          <!-- FILTROS -->
+          <div class="filters-bar">
+            <div class="filter-group">
+              <label>Filtrar por Dimensión:</label>
+              <select id="filtro-evidencia-dim" class="form-select">
+                <option value="">Todas las Dimensiones</option>
+                <option value="D1">D1 - Estrategia y Programa</option>
+                <option value="D2">D2 - Viabilidad Financiera</option>
+                <option value="D3">D3 - Marco Organizacional</option>
+                <option value="D4">D4 - Arquitectura de Datos</option>
+                <option value="D5">D5 - Calidad de Datos</option>
+                <option value="D6">D6 - Seguridad</option>
+                <option value="D7">D7 - Arquitectura y Operaciones</option>
+                <option value="D8">D8 - Interoperabilidad</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Estado de Validación:</label>
+              <select id="filtro-evidencia-estado" class="form-select">
+                <option value="">Todos los Estados</option>
+                <option value="Validado">Validado</option>
+                <option value="En Revisión">En Revisión</option>
+                <option value="Observado">Observado</option>
+              </select>
+            </div>
+            <div class="filter-group flex-1">
+              <label>Búsqueda rápida:</label>
+              <input type="text" id="filtro-evidencia-search" class="form-input" placeholder="Buscar por nombre, código o responsable...">
+            </div>
+          </div>
+
+          <div class="table-responsive mt-4">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Cód. Pregunta</th>
+                  <th>Nombre de Evidencia</th>
+                  <th>Tipo</th>
+                  <th>Área / Unidad</th>
+                  <th>Responsable</th>
+                  <th>Enlace / Archivo</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-evidencias-body">
+                <!-- Se llena dinámicamente -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- VISTA 4: PLAN DE ACCIÓN -->
+      <section id="tab-plan" class="tab-view">
+        <!-- DATOS INSTITUCIONALES -->
+        <div class="card mb-6">
+          <div class="card-header">
+            <div class="card-title-group">
+              <h3 class="card-title">Identificación de la Entidad y Oficial de Gobierno de Datos (OGD)</h3>
+              <p class="card-desc">Parámetros oficiales que se inyectan en la carátula y cuerpo del Plan de Acción</p>
+            </div>
+            <button class="btn btn-sm btn-primary" id="btn-guardar-config-plan">Guardar Datos</button>
+          </div>
+          <div class="form-grid-3">
+            <div class="form-group">
+              <label>Nombre de la Entidad:</label>
+              <input type="text" id="plan-entidad-nombre" class="form-input" value="Oficina de Tecnologías de la Información">
+            </div>
+            <div class="form-group">
+              <label>Siglas Institucionales:</label>
+              <input type="text" id="plan-siglas" class="form-input" value="OTI">
+            </div>
+            <div class="form-group">
+              <label>Período de Vigencia:</label>
+              <input type="text" id="plan-periodo" class="form-input" value="2026 - 2030">
+            </div>
+            <div class="form-group">
+              <label>Oficial de Gobierno de Datos (OGD):</label>
+              <input type="text" id="plan-ogd-nombre" class="form-input" value="Ing. Oficial de Gobierno de Datos">
+            </div>
+            <div class="form-group">
+              <label>Puesto del OGD:</label>
+              <input type="text" id="plan-ogd-puesto" class="form-input" value="Jefe de Tecnologías de la Información">
+            </div>
+            <div class="form-group">
+              <label>Resolución de Aprobación CGTD:</label>
+              <input type="text" id="plan-resolucion" class="form-input" value="Resolución N° 001-2026-CGTD">
+            </div>
+          </div>
+        </div>
+
+        <!-- CONSOLIDADO DE INICIATIVAS -->
+        <div class="card">
+          <div class="card-header flex-between">
+            <div class="card-title-group">
+              <h3 class="card-title">Iniciativas, Proyectos y Acciones Priorizadas (ENGD 2026–2030)</h3>
+              <p class="card-desc">Gestión de metas, avance real, presupuesto y ponderación institucional</p>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-outline" id="btn-export-plan-docx-top">
+                <i data-lucide="file-text"></i> Descargar Word Oficial (.docx)
+              </button>
+              <button class="btn btn-primary" id="btn-nueva-iniciativa">
+                <i data-lucide="plus"></i> Nueva Iniciativa
+              </button>
+            </div>
+          </div>
+
+          <div class="table-responsive mt-4">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Cód</th>
+                  <th>Iniciativa / Proyecto</th>
+                  <th>Eje ENGD</th>
+                  <th>Plazo</th>
+                  <th>Responsable</th>
+                  <th>Peso Rel. (%)</th>
+                  <th>Avance (%)</th>
+                  <th>Costo Proy. (S/)</th>
+                  <th>Índice Pond.</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-iniciativas-body">
+                <!-- Se llena dinámicamente -->
+              </tbody>
+              <tfoot>
+                <tr class="tfoot-summary">
+                  <td colspan="5" class="text-right"><strong>Índice de Cumplimiento Institucional Ponderado:</strong></td>
+                  <td id="tfoot-total-peso"><strong>100%</strong></td>
+                  <td>-</td>
+                  <td id="tfoot-total-costo"><strong>S/ 0.00</strong></td>
+                  <td id="tfoot-total-indice" class="accent-val"><strong>0.00%</strong></td>
+                  <td>-</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- VISTA 5: REPORTES Y EXPORTACIÓN -->
+      <section id="tab-exportar" class="tab-view">
+        <div class="export-grid">
+          <!-- CARD EXCEL MATRIZ -->
+          <div class="card export-card">
+            <div class="export-icon-box accent-excel">
+              <i data-lucide="table"></i>
+            </div>
+            <h3 class="export-title">Matriz de Evaluación Oficial PCM</h3>
+            <p class="export-desc">Genera el archivo idéntico a la plantilla PCM con las 75 preguntas evaluadas, fórmulas automáticas y comentarios inyectados.</p>
+            <div class="export-format-badge">Formato: .XLSX (Microsoft Excel)</div>
+            <a href="/api/exportar/matriz-excel" class="btn btn-success btn-block mt-4" download>
+              <i data-lucide="download"></i> Descargar Matriz de Evaluación
+            </a>
+          </div>
+
+          <!-- CARD EXCEL EVIDENCIAS -->
+          <div class="card export-card">
+            <div class="export-icon-box accent-cyan">
+              <i data-lucide="folder-archive"></i>
+            </div>
+            <h3 class="export-title">Inventario de Evidencias Digitales</h3>
+            <p class="export-desc">Genera el archivo oficial de inventario con las 8 pestañas temáticas (D1 a D8) y todas las evidencias registradas en el sistema.</p>
+            <div class="export-format-badge">Formato: .XLSX (Microsoft Excel)</div>
+            <a href="/api/exportar/evidencias-excel" class="btn btn-cyan btn-block mt-4" download>
+              <i data-lucide="download"></i> Descargar Inventario de Evidencias
+            </a>
+          </div>
+
+          <!-- CARD WORD PLAN ACCIÓN -->
+          <div class="card export-card">
+            <div class="export-icon-box accent-word">
+              <i data-lucide="file-text"></i>
+            </div>
+            <h3 class="export-title">Plan de Acción de Gobierno de Datos</h3>
+            <p class="export-desc">Genera el documento Word formal según la estructura obligatoria de la SGTD/PCM listo para firma del Comité CGTD.</p>
+            <div class="export-format-badge">Formato: .DOCX (Microsoft Word)</div>
+            <a href="/api/exportar/plan-docx" class="btn btn-primary btn-block mt-4" download>
+              <i data-lucide="download"></i> Descargar Plan de Acción Formal
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODAL: REGISTRAR / EDITAR EVIDENCIA -->
+  <div class="modal-backdrop" id="modal-evidencia">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-evidencia-title">Registrar Evidencia de Sustento</h3>
+        <button class="modal-close-btn" id="btn-cerrar-modal-evidencia">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-evidencia">
+          <input type="hidden" id="evidencia-id">
+          
+          <div class="form-group">
+            <label>Código de Pregunta a Vincular: <span class="req">*</span></label>
+            <select id="evidencia-pregunta" class="form-select" required>
+              <!-- Opciones de preguntas 1.1 a 8.8 -->
+            </select>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label>Origen: <span class="req">*</span></label>
+              <select id="evidencia-origen" class="form-select" required>
+                <option value="Interno">Interno (Producido por la entidad)</option>
+                <option value="Externo">Externo (Proveedores, convenios)</option>
+                <option value="Normativo">Normativo / Legal</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Tipo de Evidencia: <span class="req">*</span></label>
+              <select id="evidencia-tipo" class="form-select" required>
+                <option value="Documento normativo / Directiva">Documento normativo / Directiva</option>
+                <option value="Plan o Estrategia Formal">Plan o Estrategia Formal</option>
+                <option value="Acta de Comité / Reunión">Acta de Comité / Reunión</option>
+                <option value="Informe Técnico / Reporte">Informe Técnico / Reporte</option>
+                <option value="Diagrama / Modelo de Arquitectura">Diagrama / Modelo de Arquitectura</option>
+                <option value="Enlace a Portal / Repositorio Git">Enlace a Portal / Repositorio Git</option>
+                <option value="Captura de Pantalla / Sistema">Captura de Pantalla / Sistema</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Nombre de la Evidencia: <span class="req">*</span></label>
+            <input type="text" id="evidencia-nombre" class="form-input" placeholder="Ej: Directiva de Seguridad de Información OTI-DIR-002" required>
+          </div>
+
+          <div class="form-group">
+            <label>Adjuntar Archivo (o Enlace Web):</label>
+            <div class="file-upload-box">
+              <input type="file" id="evidencia-file" class="file-input">
+              <div class="upload-tip">Subir archivo (PDF, DOCX, XLSX, PNG, ZIP hasta 50MB)</div>
+            </div>
+            <div class="or-separator">O ingresa un enlace / URL:</div>
+            <input type="text" id="evidencia-url" class="form-input" placeholder="https://sharepoint.entidad.gob.pe/... o enlace a Drive/Git">
+          </div>
+
+          <div class="form-group">
+            <label>Descripción del Contenido (¿Cómo sustenta la pregunta?): <span class="req">*</span></label>
+            <textarea id="evidencia-desc" class="form-textarea" rows="3" placeholder="Detalle cómo este medio de verificación demuestra el nivel de madurez marcado..." required></textarea>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label>Responsable: <span class="req">*</span></label>
+              <input type="text" id="evidencia-responsable" class="form-input" placeholder="Apellidos y Nombres" required>
+            </div>
+            <div class="form-group">
+              <label>Área / Unidad Orgánica: <span class="req">*</span></label>
+              <input type="text" id="evidencia-area" class="form-input" placeholder="Ej: Área de Base de Datos y Redes" required>
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label>Estado de Validación:</label>
+              <select id="evidencia-estado" class="form-select">
+                <option value="En Revisión">En Revisión</option>
+                <option value="Validado">Validado</option>
+                <option value="Observado">Observado</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Comentario del Evaluador / CND:</label>
+              <input type="text" id="evidencia-comentarios-rev" class="form-input" placeholder="Observaciones u observaciones de mejora...">
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline" id="btn-cancelar-modal-evidencia">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Guardar Evidencia</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
