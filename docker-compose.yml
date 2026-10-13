@@ -1,0 +1,46 @@
+services:
+  # -------------------------------------------------------------
+  # 1. Base de Datos: PostgreSQL 16
+  # -------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    container_name: sgd_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: sgd_madurez
+    ports:
+      - "5432:5432"
+    volumes:
+      - sgd_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sgd_madurez"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # -------------------------------------------------------------
+  # 2. Aplicación Web: FastAPI + React (Tailwind CSS)
+  # -------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sgd_app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg2://postgres:postgrespassword@db:5432/sgd_madurez
+    ports:
+      - "8000:8000"
+    volumes:
+      - sgd_uploads_data:/app/sgd_sistema/uploads
+
+volumes:
+  sgd_postgres_data:
+    driver: local
+  sgd_uploads_data:
+    driver: local

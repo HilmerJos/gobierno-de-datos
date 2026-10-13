@@ -29,6 +29,30 @@ INICIAR_SISTEMA.bat
 ```
 La aplicación abrirá automáticamente en tu navegador web en: **`http://127.0.0.1:8000`**
 
+### 🐳 Despliegue con Docker y Docker Compose (Desde Cero)
+El sistema incluye configuración multi-etapa completa con **PostgreSQL 16** y **FastAPI + React**:
+
+1. **Lanzador 1 Clic (Windows)**:
+   Haz doble clic sobre:
+   ```
+   INICIAR_DOCKER.bat
+   ```
+   (Para detener los contenedores: `DETENER_DOCKER.bat`).
+
+2. **O desde la terminal / PowerShell**:
+   ```bash
+   # Construir e iniciar contenedores en segundo plano
+   docker compose up -d --build
+
+   # Ver logs en tiempo real
+   docker compose logs -f
+
+   # Detener servicios
+   docker compose down
+   ```
+   - **Plataforma Web:** `http://localhost:8000`
+   - **Base de Datos:** PostgreSQL en puerto `5432` (Base de datos: `sgd_madurez`)
+
 ### Modo Desarrollo Frontend (Vite HMR)
 Si deseas trabajar con recarga en vivo del frontend:
 ```bash
@@ -36,7 +60,7 @@ cd "d:\OTI 2026\GOBIERNO DE DATOS\sgd_sistema\frontend"
 npm run dev
 ```
 
-### Configuración de PostgreSQL
+### Configuración de PostgreSQL (Modo Manual sin Docker)
 Edita el archivo `sgd_sistema/backend/.env` (o define la variable de entorno):
 ```env
 DATABASE_URL=postgresql+psycopg2://postgres:tu_password@localhost:5432/sgd_madurez
