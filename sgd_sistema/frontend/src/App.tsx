@@ -9,6 +9,7 @@ import {
 } from './types';
 import { CustomSelect, SelectOption } from './components/CustomSelect';
 import { QuestionCard } from './components/QuestionCard';
+import { QuestionNavigator } from './components/QuestionNavigator';
 import { RadarChart } from './components/RadarChart';
 import { BrechasChart } from './components/BrechasChart';
 import { EvidenciasModal } from './components/EvidenciasModal';
@@ -45,6 +46,7 @@ export const App: React.FC = () => {
   const [dimensiones, setDimensiones] = useState<Dimension[]>([]);
   const [currentDimension, setCurrentDimension] = useState<string>('D1');
   const [preguntas, setPreguntas] = useState<Pregunta[]>([]);
+  const [activePreguntaCodigo, setActivePreguntaCodigo] = useState<string | null>(null);
   const [evidencias, setEvidencias] = useState<Evidencia[]>([]);
   const [iniciativas, setIniciativas] = useState<Iniciativa[]>([]);
   const [configInst, setConfigInst] = useState<ConfigInstitucional>({
@@ -106,8 +108,15 @@ export const App: React.FC = () => {
   const loadPreguntas = async (dimCode: string) => {
     try {
       const res = await fetch(`/api/preguntas?dim=${dimCode}`);
-      const data = await res.json();
+      const data: Pregunta[] = await res.json();
       setPreguntas(data);
+      if (data && data.length > 0) {
+        setActivePreguntaCodigo(prev => {
+          if (!prev) return data[0].codigo;
+          const exists = data.some(q => q.codigo === prev);
+          return exists ? prev : data[0].codigo;
+        });
+      }
     } catch (err) {
       console.error("Error cargando preguntas:", err);
     }
@@ -677,20 +686,66 @@ export const App: React.FC = () => {
                 </div>
               )}
 
-              {/* LISTA DE PREGUNTAS */}
-              <div className="space-y-4 sm:space-y-5">
-                {preguntas.map((q) => (
-                  <QuestionCard
-                    key={q.codigo}
-                    pregunta={q}
-                    onSaveRespuesta={handleSaveRespuesta}
-                    onOpenEvidencias={(codigo) => {
-                      setPreselectedPreguntaCodigo(codigo);
-                      setIsEvidenciaModalOpen(true);
-                    }}
-                  />
-                ))}
-              </div>
+              {/* NAVEGADOR DE PREGUNTAS TIPO SEMÁFORO (IMAGEN 2 Y 3) PARA NAVEGACIÓN DIRECTA SIN SCROLL */}
+              <QuestionNavigator
+                preguntas={preguntas}
+                activeCodigo={activePreguntaCodigo}
+                onSelectPregunta={(cod) => setActivePreguntaCodigo(cod)}
+                dimensionCodigo={currentDimension}
+              />
+
+              {/* RENDERIZADO: O EN MODO FOCO (1 PREGUNTA SIN SCROLL) O MODO LISTA COMPLETA */}
+              {activePreguntaCodigo ? (
+                // MODO FOCO: 1 PREGUNTA A LA VEZ, SIN SCROLL
+                (() => {
+                  const currentIdx = preguntas.findIndex(q => q.codigo === activePreguntaCodigo);
+                  const currentQ = preguntas[currentIdx] || preguntas[0];
+                  if (!currentQ) return null;
+
+                  return (
+                    <div className="transition-all duration-200">
+                      <QuestionCard
+                        key={currentQ.codigo}
+                        pregunta={currentQ}
+                        onSaveRespuesta={handleSaveRespuesta}
+                        onOpenEvidencias={(codigo) => {
+                          setPreselectedPreguntaCodigo(codigo);
+                          setIsEvidenciaModalOpen(true);
+                        }}
+                        onPrevQuestion={() => {
+                          if (currentIdx > 0) setActivePreguntaCodigo(preguntas[currentIdx - 1].codigo);
+                        }}
+                        onNextQuestion={() => {
+                          if (currentIdx < preguntas.length - 1) setActivePreguntaCodigo(preguntas[currentIdx + 1].codigo);
+                        }}
+                        hasPrev={currentIdx > 0}
+                        hasNext={currentIdx < preguntas.length - 1}
+                        currentIndex={currentIdx}
+                        totalInDimension={preguntas.length}
+                        isSingleMode={true}
+                      />
+                    </div>
+                  );
+                })()
+              ) : (
+                // MODO LISTA COMPLETA (SI HIZO CLIC EN "TODO")
+                <div className="space-y-4 sm:space-y-5">
+                  {preguntas.map((q, idx) => (
+                    <QuestionCard
+                      key={q.codigo}
+                      pregunta={q}
+                      onSaveRespuesta={handleSaveRespuesta}
+                      onOpenEvidencias={(codigo) => {
+                        setPreselectedPreguntaCodigo(codigo);
+                        setIsEvidenciaModalOpen(true);
+                      }}
+                      currentIndex={idx}
+                      totalInDimension={preguntas.length}
+                      isSingleMode={false}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
