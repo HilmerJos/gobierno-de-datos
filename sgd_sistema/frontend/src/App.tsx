@@ -36,7 +36,6 @@ import {
   FileCheck,
   ChevronLeft,
   ChevronRight,
-  PanelLeft,
   Building2
 } from 'lucide-react';
 
@@ -564,15 +563,6 @@ export const App: React.FC = () => {
               title="Abrir menú"
             >
               <Menu className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
-
-            {/* Botón colapsar menú escritorio (>= lg) */}
-            <button
-              onClick={toggleSidebar}
-              className="hidden lg:flex p-2 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all flex-shrink-0 cursor-pointer"
-              title={isSidebarCollapsed ? "Expandir menú (Ctrl+B)" : "Contraer menú (Ctrl+B)"}
-            >
-              <PanelLeft className="w-4 h-4" />
             </button>
 
             <div className="min-w-0">
