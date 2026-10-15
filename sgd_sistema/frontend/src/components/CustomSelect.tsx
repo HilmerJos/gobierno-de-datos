@@ -50,14 +50,14 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
         </label>
       )}
 
-      {/* Caja de selección (Trigger) estilo Imagen 3 con rounded-2xl y tamaño responsive equilibrado */}
+      {/* Caja de selección (Trigger) con rounded-2xl y estilo equilibrado */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full bg-white dark:bg-slate-900 border-2 rounded-2xl px-3.5 sm:px-5 py-2.5 sm:py-3.5 flex items-center justify-between text-left transition-all shadow-xs ${
+        className={`w-full bg-slate-50/70 hover:bg-slate-100/70 dark:bg-slate-900 border rounded-2xl px-3.5 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between text-left transition-all shadow-2xs ${
           isOpen
             ? 'border-sky-600 dark:border-sky-400 ring-2 ring-sky-500/20'
-            : 'border-slate-800 dark:border-slate-300 hover:border-sky-500'
+            : 'border-slate-300 dark:border-slate-700 hover:border-sky-500 dark:hover:border-sky-400'
         }`}
       >
         <div className="flex-1 min-w-0 pr-2 sm:pr-3">

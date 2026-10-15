@@ -65,16 +65,19 @@ export const DimensionSummaryCard: React.FC<DimensionSummaryCardProps> = ({
 
       {/* Resumen Semáforo en 3 cajitas (Verde, Ámbar, Rojo) */}
       <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] font-bold">
-        <div className="px-1.5 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-          <span className="block font-black text-xs text-emerald-700 dark:text-emerald-300">{verdes}</span>
+        <div className="px-1.5 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+          <span className="font-black text-xs text-emerald-700 dark:text-emerald-300">{verdes}</span>
           <span className="text-[9px]">Verde</span>
         </div>
-        <div className="px-1.5 py-1 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-          <span className="block font-black text-xs text-amber-700 dark:text-amber-300">{ambars}</span>
+        <div className="px-1.5 py-1 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center justify-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+          <span className="font-black text-xs text-amber-700 dark:text-amber-300">{ambars}</span>
           <span className="text-[9px]">Ámbar</span>
         </div>
-        <div className="px-1.5 py-1 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-          <span className="block font-black text-xs text-rose-700 dark:text-rose-300">{rojos + pendientes}</span>
+        <div className="px-1.5 py-1 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800 flex items-center justify-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+          <span className="font-black text-xs text-rose-700 dark:text-rose-300">{rojos + pendientes}</span>
           <span className="text-[9px]">Rojo</span>
         </div>
       </div>

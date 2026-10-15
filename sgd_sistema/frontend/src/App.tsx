@@ -651,10 +651,10 @@ export const App: React.FC = () => {
             <div className="space-y-4 sm:space-y-6">
               
               {/* FILA SUPERIOR EN 3 COLUMNAS: COL 1 SELECTOR | COL 2 BANNER DIMENSIÓN | COL 3 RESUMEN SEMÁFORO */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-4 items-stretch w-full">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-3.5 items-stretch w-full">
                 
                 {/* PRIMERA COLUMNA (SEGUNDA IMAGEN): SELECTOR DE DIMENSIÓN */}
-                <div className="lg:col-span-4 xl:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 sm:p-3.5 shadow-xs flex flex-col justify-center">
+                <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 sm:p-3.5 shadow-xs flex flex-col justify-between min-h-[108px] h-full">
                   <CustomSelect
                     label="SELECCIONAR DIMENSIÓN A EVALUAR *"
                     options={dimensionSelectOptions}
@@ -666,21 +666,21 @@ export const App: React.FC = () => {
 
                 {/* SEGUNDA COLUMNA (TERCERA IMAGEN): BANNER AZUL DE LA DIMENSIÓN */}
                 {curDimObj && (
-                  <div className="lg:col-span-5 xl:col-span-5 p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-sky-900 to-blue-950 text-white border border-sky-800/80 shadow-md flex items-center justify-between gap-3">
+                  <div className="lg:col-span-5 rounded-2xl bg-gradient-to-r from-[#0f2744] via-[#163b66] to-[#0f2744] text-white border border-sky-800/80 shadow-xs p-3 sm:p-3.5 flex items-center justify-between gap-3 min-h-[108px] h-full">
                     <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
-                      <div className="w-10 h-10 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center font-heading font-black text-sm text-sky-300 flex-shrink-0">
+                      <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white/15 border border-white/20 backdrop-blur-xs flex items-center justify-center font-heading font-black text-sm text-sky-300 flex-shrink-0 shadow-inner">
                         {curDimObj.codigo}
                       </div>
                       <div className="min-w-0">
                         <h2 className="font-heading font-bold text-xs sm:text-sm text-white truncate leading-snug">
                           {curDimObj.nombre}
                         </h2>
-                        <p className="text-[10px] text-sky-200 truncate mt-0.5">
+                        <p className="text-[10px] text-sky-200/90 truncate mt-0.5">
                           {curDimObj.total_preguntas} componentes obligatorios según guía PCM
                         </p>
                       </div>
                     </div>
-                    <div className="bg-white/15 px-3 py-1.5 rounded-2xl text-center flex-shrink-0 border border-white/10">
+                    <div className="bg-white/15 backdrop-blur-xs px-3 sm:px-3.5 py-1.5 rounded-2xl text-center flex-shrink-0 border border-white/20">
                       <span className="font-heading font-black text-sm sm:text-base text-sky-300 block leading-none">
                         {curDimObj.puntaje.toFixed(2)}
                       </span>
@@ -690,7 +690,7 @@ export const App: React.FC = () => {
                 )}
 
                 {/* TERCERA COLUMNA (CUARTA IMAGEN): RESUMEN DE PROGRESO Y SEMÁFORO */}
-                <div className="lg:col-span-3 xl:col-span-3">
+                <div className="md:col-span-2 lg:col-span-3 min-h-[108px] h-full">
                   <DimensionSummaryCard
                     preguntas={preguntas}
                     dimensionCodigo={currentDimension}
