@@ -174,7 +174,7 @@ export const QuestionNavigator: React.FC<QuestionNavigatorProps> = ({
       </div>
 
       {/* Botones de Preguntas Individuales (Semáforo Rojo, Ámbar, Verde) */}
-      <div className={`${isMobileExpanded ? 'grid' : 'hidden lg:grid'} grid-cols-2 sm:grid-cols-3 lg:grid-cols-1 gap-1.5 lg:max-h-[calc(100vh-270px)] lg:overflow-y-auto lg:pr-1 scrollbar-thin`}>
+      <div className={`${isMobileExpanded ? 'grid' : 'hidden lg:grid'} grid-cols-2 sm:grid-cols-3 lg:grid-cols-1 gap-1.5`}>
         {preguntas.map((q) => {
           const semaforo = getSemaforoStatus(q);
           const isSelected = activeCodigo === q.codigo;
@@ -220,7 +220,7 @@ export const QuestionNavigator: React.FC<QuestionNavigatorProps> = ({
               key={q.codigo}
               type="button"
               onClick={() => onSelectPregunta(q.codigo)}
-              className={`w-full flex items-center justify-between p-2.5 rounded-2xl text-xs font-bold border transition-all cursor-pointer text-left ${buttonClasses}`}
+              className={`w-full flex items-center justify-between py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer text-left ${buttonClasses}`}
               title={`Pregunta ${q.codigo}: ${q.respuesta ? `${valor}.0 pts` : 'Pendiente de evaluación'}`}
             >
               <div className="flex items-center gap-2 min-w-0">
