@@ -1,11 +1,11 @@
 import React from 'react';
 import { Pregunta } from '../types';
-import { Layers, LayoutGrid, Check } from 'lucide-react';
+import { Layers } from 'lucide-react';
 
 interface QuestionNavigatorProps {
   preguntas: Pregunta[];
-  activeCodigo: string | null; // null significa "Ver Todas"
-  onSelectPregunta: (codigo: string | null) => void;
+  activeCodigo: string;
+  onSelectPregunta: (codigo: string) => void;
   dimensionCodigo: string;
 }
 
@@ -93,26 +93,8 @@ export const QuestionNavigator: React.FC<QuestionNavigatorProps> = ({
         </div>
       </div>
 
-      {/* 2. BOTÓN "TODO" (VER LISTA COMPLETA) */}
-      <button
-        type="button"
-        onClick={() => onSelectPregunta(null)}
-        className={`w-full flex items-center justify-between px-3.5 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
-          activeCodigo === null
-            ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 ring-2 ring-emerald-400 border border-emerald-700'
-            : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700'
-        }`}
-        title="Ver todas las preguntas de la dimensión en lista continua"
-      >
-        <div className="flex items-center gap-2">
-          <LayoutGrid className="w-3.5 h-3.5" />
-          <span>Ver Todas ({preguntas.length})</span>
-        </div>
-        {activeCodigo === null && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-      </button>
-
-      {/* 3. LISTA VERTICAL DE PREGUNTAS CON BOTONES TIPO SEMÁFORO (SIN SCROLL HORIZONTAL) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-1 gap-1.5 lg:max-h-[calc(100vh-320px)] lg:overflow-y-auto lg:pr-1 scrollbar-thin">
+      {/* 2. LISTA VERTICAL DE PREGUNTAS CON BOTONES TIPO SEMÁFORO (SIN SCROLL HORIZONTAL) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-1 gap-1.5 lg:max-h-[calc(100vh-270px)] lg:overflow-y-auto lg:pr-1 scrollbar-thin">
         {preguntas.map((q) => {
           const semaforo = getSemaforoStatus(q);
           const isSelected = activeCodigo === q.codigo;

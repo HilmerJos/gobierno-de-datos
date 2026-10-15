@@ -437,8 +437,8 @@ export const App: React.FC = () => {
           </div>
         </header>
 
-        {/* CONTENIDO DE PESTAÑAS */}
-        <main className="flex-1 p-3.5 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 max-w-7xl w-full mx-auto">
+        {/* CONTENIDO DE PESTAÑAS (100% ANCHO DE PANTALLA FLUIDO SIN VACÍOS) */}
+        <main className="flex-1 p-3.5 sm:p-5 lg:p-6 space-y-4 sm:space-y-5 w-full">
           
           {/* TAB 1: DASHBOARD */}
           {activeTab === 'dashboard' && stats && (
@@ -686,72 +686,51 @@ export const App: React.FC = () => {
                 </div>
               )}
 
-              {/* LAYOUT DE 2 COLUMNAS: PANEL SEMÁFORO VERTICAL A LA IZQUIERDA + TARJETA DE PREGUNTA A LA DERECHA */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+              {/* LAYOUT FLUIDO A PANTALLA COMPLETA: PANEL IZQUIERDO VERTICAL + TARJETA DE PREGUNTA A LA DERECHA */}
+              <div className="flex flex-col lg:flex-row gap-5 items-start w-full">
                 
-                {/* 1. PANEL IZQUIERDO VERTICAL: NAVEGADOR DE PREGUNTAS SEMÁFORO */}
-                <div className="lg:col-span-4 xl:col-span-3 lg:sticky lg:top-4">
+                {/* 1. PANEL IZQUIERDO VERTICAL: NAVEGADOR DE PREGUNTAS SEMÁFORO (ANCHO FIJO ÓPTIMO) */}
+                <div className="w-full lg:w-72 xl:w-80 flex-shrink-0 lg:sticky lg:top-4">
                   <QuestionNavigator
                     preguntas={preguntas}
-                    activeCodigo={activePreguntaCodigo}
+                    activeCodigo={activePreguntaCodigo || preguntas[0]?.codigo || '1.1'}
                     onSelectPregunta={(cod) => setActivePreguntaCodigo(cod)}
                     dimensionCodigo={currentDimension}
                   />
                 </div>
 
-                {/* 2. PANEL DERECHO: TARJETA DE LA PREGUNTA */}
-                <div className="lg:col-span-8 xl:col-span-9 min-w-0">
-                  {activePreguntaCodigo ? (
-                    // MODO FOCO: 1 PREGUNTA A LA VEZ, SIN SCROLL
-                    (() => {
-                      const currentIdx = preguntas.findIndex(q => q.codigo === activePreguntaCodigo);
-                      const currentQ = preguntas[currentIdx] || preguntas[0];
-                      if (!currentQ) return null;
+                {/* 2. PANEL DERECHO: TARJETA DE PREGUNTA OCUPA EL 100% DEL ESPACIO RESTANTE */}
+                <div className="flex-1 min-w-0 w-full">
+                  {(() => {
+                    const currentIdx = preguntas.findIndex(q => q.codigo === (activePreguntaCodigo || preguntas[0]?.codigo));
+                    const currentQ = preguntas[currentIdx] || preguntas[0];
+                    if (!currentQ) return null;
 
-                      return (
-                        <div className="transition-all duration-200">
-                          <QuestionCard
-                            key={currentQ.codigo}
-                            pregunta={currentQ}
-                            onSaveRespuesta={handleSaveRespuesta}
-                            onOpenEvidencias={(codigo) => {
-                              setPreselectedPreguntaCodigo(codigo);
-                              setIsEvidenciaModalOpen(true);
-                            }}
-                            onPrevQuestion={() => {
-                              if (currentIdx > 0) setActivePreguntaCodigo(preguntas[currentIdx - 1].codigo);
-                            }}
-                            onNextQuestion={() => {
-                              if (currentIdx < preguntas.length - 1) setActivePreguntaCodigo(preguntas[currentIdx + 1].codigo);
-                            }}
-                            hasPrev={currentIdx > 0}
-                            hasNext={currentIdx < preguntas.length - 1}
-                            currentIndex={currentIdx}
-                            totalInDimension={preguntas.length}
-                            isSingleMode={true}
-                          />
-                        </div>
-                      );
-                    })()
-                  ) : (
-                    // MODO LISTA COMPLETA (SI HIZO CLIC EN "TODO")
-                    <div className="space-y-4 sm:space-y-5">
-                      {preguntas.map((q, idx) => (
+                    return (
+                      <div className="transition-all duration-200 w-full">
                         <QuestionCard
-                          key={q.codigo}
-                          pregunta={q}
+                          key={currentQ.codigo}
+                          pregunta={currentQ}
                           onSaveRespuesta={handleSaveRespuesta}
                           onOpenEvidencias={(codigo) => {
                             setPreselectedPreguntaCodigo(codigo);
                             setIsEvidenciaModalOpen(true);
                           }}
-                          currentIndex={idx}
+                          onPrevQuestion={() => {
+                            if (currentIdx > 0) setActivePreguntaCodigo(preguntas[currentIdx - 1].codigo);
+                          }}
+                          onNextQuestion={() => {
+                            if (currentIdx < preguntas.length - 1) setActivePreguntaCodigo(preguntas[currentIdx + 1].codigo);
+                          }}
+                          hasPrev={currentIdx > 0}
+                          hasNext={currentIdx < preguntas.length - 1}
+                          currentIndex={currentIdx}
                           totalInDimension={preguntas.length}
-                          isSingleMode={false}
+                          isSingleMode={true}
                         />
-                      ))}
-                    </div>
-                  )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
