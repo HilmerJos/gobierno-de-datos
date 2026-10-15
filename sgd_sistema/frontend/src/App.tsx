@@ -686,66 +686,74 @@ export const App: React.FC = () => {
                 </div>
               )}
 
-              {/* NAVEGADOR DE PREGUNTAS TIPO SEMÁFORO (IMAGEN 2 Y 3) PARA NAVEGACIÓN DIRECTA SIN SCROLL */}
-              <QuestionNavigator
-                preguntas={preguntas}
-                activeCodigo={activePreguntaCodigo}
-                onSelectPregunta={(cod) => setActivePreguntaCodigo(cod)}
-                dimensionCodigo={currentDimension}
-              />
-
-              {/* RENDERIZADO: O EN MODO FOCO (1 PREGUNTA SIN SCROLL) O MODO LISTA COMPLETA */}
-              {activePreguntaCodigo ? (
-                // MODO FOCO: 1 PREGUNTA A LA VEZ, SIN SCROLL
-                (() => {
-                  const currentIdx = preguntas.findIndex(q => q.codigo === activePreguntaCodigo);
-                  const currentQ = preguntas[currentIdx] || preguntas[0];
-                  if (!currentQ) return null;
-
-                  return (
-                    <div className="transition-all duration-200">
-                      <QuestionCard
-                        key={currentQ.codigo}
-                        pregunta={currentQ}
-                        onSaveRespuesta={handleSaveRespuesta}
-                        onOpenEvidencias={(codigo) => {
-                          setPreselectedPreguntaCodigo(codigo);
-                          setIsEvidenciaModalOpen(true);
-                        }}
-                        onPrevQuestion={() => {
-                          if (currentIdx > 0) setActivePreguntaCodigo(preguntas[currentIdx - 1].codigo);
-                        }}
-                        onNextQuestion={() => {
-                          if (currentIdx < preguntas.length - 1) setActivePreguntaCodigo(preguntas[currentIdx + 1].codigo);
-                        }}
-                        hasPrev={currentIdx > 0}
-                        hasNext={currentIdx < preguntas.length - 1}
-                        currentIndex={currentIdx}
-                        totalInDimension={preguntas.length}
-                        isSingleMode={true}
-                      />
-                    </div>
-                  );
-                })()
-              ) : (
-                // MODO LISTA COMPLETA (SI HIZO CLIC EN "TODO")
-                <div className="space-y-4 sm:space-y-5">
-                  {preguntas.map((q, idx) => (
-                    <QuestionCard
-                      key={q.codigo}
-                      pregunta={q}
-                      onSaveRespuesta={handleSaveRespuesta}
-                      onOpenEvidencias={(codigo) => {
-                        setPreselectedPreguntaCodigo(codigo);
-                        setIsEvidenciaModalOpen(true);
-                      }}
-                      currentIndex={idx}
-                      totalInDimension={preguntas.length}
-                      isSingleMode={false}
-                    />
-                  ))}
+              {/* LAYOUT DE 2 COLUMNAS: PANEL SEMÁFORO VERTICAL A LA IZQUIERDA + TARJETA DE PREGUNTA A LA DERECHA */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                
+                {/* 1. PANEL IZQUIERDO VERTICAL: NAVEGADOR DE PREGUNTAS SEMÁFORO */}
+                <div className="lg:col-span-4 xl:col-span-3 lg:sticky lg:top-4">
+                  <QuestionNavigator
+                    preguntas={preguntas}
+                    activeCodigo={activePreguntaCodigo}
+                    onSelectPregunta={(cod) => setActivePreguntaCodigo(cod)}
+                    dimensionCodigo={currentDimension}
+                  />
                 </div>
-              )}
+
+                {/* 2. PANEL DERECHO: TARJETA DE LA PREGUNTA */}
+                <div className="lg:col-span-8 xl:col-span-9 min-w-0">
+                  {activePreguntaCodigo ? (
+                    // MODO FOCO: 1 PREGUNTA A LA VEZ, SIN SCROLL
+                    (() => {
+                      const currentIdx = preguntas.findIndex(q => q.codigo === activePreguntaCodigo);
+                      const currentQ = preguntas[currentIdx] || preguntas[0];
+                      if (!currentQ) return null;
+
+                      return (
+                        <div className="transition-all duration-200">
+                          <QuestionCard
+                            key={currentQ.codigo}
+                            pregunta={currentQ}
+                            onSaveRespuesta={handleSaveRespuesta}
+                            onOpenEvidencias={(codigo) => {
+                              setPreselectedPreguntaCodigo(codigo);
+                              setIsEvidenciaModalOpen(true);
+                            }}
+                            onPrevQuestion={() => {
+                              if (currentIdx > 0) setActivePreguntaCodigo(preguntas[currentIdx - 1].codigo);
+                            }}
+                            onNextQuestion={() => {
+                              if (currentIdx < preguntas.length - 1) setActivePreguntaCodigo(preguntas[currentIdx + 1].codigo);
+                            }}
+                            hasPrev={currentIdx > 0}
+                            hasNext={currentIdx < preguntas.length - 1}
+                            currentIndex={currentIdx}
+                            totalInDimension={preguntas.length}
+                            isSingleMode={true}
+                          />
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    // MODO LISTA COMPLETA (SI HIZO CLIC EN "TODO")
+                    <div className="space-y-4 sm:space-y-5">
+                      {preguntas.map((q, idx) => (
+                        <QuestionCard
+                          key={q.codigo}
+                          pregunta={q}
+                          onSaveRespuesta={handleSaveRespuesta}
+                          onOpenEvidencias={(codigo) => {
+                            setPreselectedPreguntaCodigo(codigo);
+                            setIsEvidenciaModalOpen(true);
+                          }}
+                          currentIndex={idx}
+                          totalInDimension={preguntas.length}
+                          isSingleMode={false}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
