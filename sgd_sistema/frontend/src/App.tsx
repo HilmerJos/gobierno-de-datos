@@ -33,13 +33,45 @@ import {
   TrendingUp,
   Award,
   ListChecks,
-  FileCheck
+  FileCheck,
+  ChevronLeft,
+  ChevronRight,
+  PanelLeft,
+  Building2
 } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'matriz' | 'evidencias' | 'plan' | 'exportar'>('dashboard');
   const [isDark, setIsDark] = useState<boolean>(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('sgd_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('sgd_sidebar_collapsed', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        toggleSidebar();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Estados de datos
   const [stats, setStats] = useState<Stats | null>(null);
@@ -252,35 +284,77 @@ export const App: React.FC = () => {
   return (
     <div className="flex min-h-screen bg-slate-100 dark:bg-[#090d16] text-slate-900 dark:text-slate-100 transition-colors duration-200">
       
-      {/* SIDEBAR DE ESCRITORIO */}
-      <aside className="hidden lg:flex w-72 bg-white dark:bg-[#0c121e] border-r border-slate-200 dark:border-slate-800 flex-col sticky top-0 h-screen z-30 shadow-xs">
-        <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-sky-600 to-blue-700 text-white flex items-center justify-center shadow-md shadow-sky-500/20">
-            <ShieldCheck className="w-5 h-5 stroke-[2.5]" />
-          </div>
-          <div>
-            <div className="font-heading font-black text-base text-slate-900 dark:text-white tracking-tight">
-              SGD-Madurez
+      {/* SIDEBAR DE ESCRITORIO COLAPSABLE */}
+      <aside
+        className={`hidden lg:flex flex-col sticky top-0 h-screen z-30 bg-white dark:bg-[#0c121e] border-r border-slate-200 dark:border-slate-800 transition-all duration-300 ease-in-out shadow-xs select-none ${
+          isSidebarCollapsed ? 'w-20' : 'w-72'
+        }`}
+      >
+        {/* CABECERA SIDEBAR CON LOGO Y BOTÓN DE COLAPSAR */}
+        <div className={`p-4 border-b border-slate-200 dark:border-slate-800 flex items-center ${
+          isSidebarCollapsed ? 'justify-center flex-col gap-2.5' : 'justify-between gap-3'
+        }`}>
+          <div className={`flex items-center gap-3 min-w-0 ${isSidebarCollapsed ? 'justify-center' : ''}`}>
+            <div
+              className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-sky-600 to-blue-700 text-white flex items-center justify-center shadow-md shadow-sky-500/20 flex-shrink-0 cursor-pointer hover:scale-105 transition-transform"
+              onClick={() => isSidebarCollapsed && setIsSidebarCollapsed(false)}
+              title="SGD-Madurez - Sistema de Evaluación de Madurez"
+            >
+              <ShieldCheck className="w-5 h-5 stroke-[2.5]" />
             </div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-400">
-              PCM • SGTD • CND
-            </div>
+            {!isSidebarCollapsed && (
+              <div className="min-w-0 animate-in fade-in duration-200">
+                <div className="font-heading font-black text-base text-slate-900 dark:text-white tracking-tight leading-tight truncate">
+                  SGD-Madurez
+                </div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-400 truncate">
+                  PCM • SGTD • CND
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* BOTÓN COLAPSAR / EXPANDIR */}
+          <button
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            title={isSidebarCollapsed ? 'Expandir menú lateral (Ctrl+B)' : 'Contraer menú lateral (Ctrl+B)'}
+            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-all flex-shrink-0"
+          >
+            {isSidebarCollapsed ? (
+              <ChevronRight className="w-4 h-4" />
+            ) : (
+              <ChevronLeft className="w-4 h-4" />
+            )}
+          </button>
         </div>
 
-        <div className="m-3.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-          <div className="text-[10px] font-bold text-sky-700 dark:text-sky-400 uppercase tracking-wider mb-0.5">
-            Entidad Evaluada
+        {/* TARJETA ENTIDAD EVALUADA */}
+        {!isSidebarCollapsed ? (
+          <div className="m-3.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 animate-in fade-in duration-200">
+            <div className="text-[10px] font-bold text-sky-700 dark:text-sky-400 uppercase tracking-wider mb-0.5">
+              Entidad Evaluada
+            </div>
+            <div className="font-bold text-xs text-slate-900 dark:text-white truncate" title={`${configInst.siglas} - ${configInst.entidad_nombre}`}>
+              {configInst.siglas} - {configInst.entidad_nombre}
+            </div>
+            <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+              Marco ENGD 2026–2030
+            </div>
           </div>
-          <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
-            {configInst.siglas} - {configInst.entidad_nombre}
+        ) : (
+          <div
+            className="mx-2 my-2.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center cursor-default text-center group relative shadow-xs"
+            title={`Entidad: ${configInst.siglas} - ${configInst.entidad_nombre} (ENGD 2026-2030)`}
+          >
+            <Building2 className="w-4 h-4 text-sky-600 dark:text-sky-400 mb-0.5" />
+            <span className="font-black text-[9px] text-slate-700 dark:text-slate-300 tracking-wider">
+              {configInst.siglas || 'OTI'}
+            </span>
           </div>
-          <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-            Marco ENGD 2026–2030
-          </div>
-        </div>
+        )}
 
-        <nav className="flex-1 px-3 space-y-1.5 overflow-y-auto">
+        {/* NAVEGACIÓN */}
+        <nav className={`flex-1 px-2.5 space-y-1.5 overflow-y-auto ${isSidebarCollapsed ? 'flex flex-col items-center py-1' : ''}`}>
           {[
             { id: 'dashboard', label: 'Dashboard Ejecutivo', icon: LayoutDashboard },
             { id: 'matriz', label: 'Matriz de Diagnóstico', icon: CheckSquare, badge: stats ? `${stats.total_respondidas}/${stats.total_preguntas}` : '0/75' },
@@ -290,22 +364,45 @@ export const App: React.FC = () => {
           ].map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
+
+            if (isSidebarCollapsed) {
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id as any)}
+                  title={`${item.label}${item.badge ? ` (${item.badge})` : ''}`}
+                  className={`relative flex items-center justify-center w-12 h-12 rounded-2xl transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-[#1a4066] text-white shadow-md'
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
+                  {item.badge && (
+                    <span className="absolute -top-1 -right-1 px-1.5 py-0.2 min-w-[18px] text-[9px] font-black rounded-full bg-sky-600 text-white border-2 border-white dark:border-[#0c121e] flex items-center justify-center shadow-xs">
+                      {item.badge.includes('/') ? item.badge.split('/')[0] : item.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            }
+
             return (
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id as any)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl font-semibold text-xs sm:text-sm transition-all ${
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl font-semibold text-xs sm:text-sm transition-all cursor-pointer ${
                   isActive
                     ? 'bg-[#1a4066] text-white shadow-md'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                <div className="flex items-center gap-2.5">
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`} />
-                  <span>{item.label}</span>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`} />
+                  <span className="truncate">{item.label}</span>
                 </div>
                 {item.badge && (
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
                     isActive
                       ? 'bg-white/20 text-white'
                       : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
@@ -318,43 +415,90 @@ export const App: React.FC = () => {
           })}
         </nav>
 
-        <div className="p-3.5 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
-          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50 animate-pulse" />
-            <span>Motor Evaluador PCM Activo</span>
-          </div>
-          <button
-            onClick={() => setIsDark(!isDark)}
-            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
-          >
-            {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
-            <span>{isDark ? 'Modo Claro' : 'Modo Oscuro'}</span>
-          </button>
+        {/* PIE DEL SIDEBAR */}
+        <div className={`p-3 border-t border-slate-200 dark:border-slate-800 ${
+          isSidebarCollapsed ? 'flex flex-col items-center gap-2.5' : 'space-y-2.5'
+        }`}>
+          {!isSidebarCollapsed ? (
+            <>
+              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 px-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50 animate-pulse" />
+                <span className="truncate">Motor Evaluador PCM Activo</span>
+              </div>
+              <button
+                onClick={() => setIsDark(!isDark)}
+                className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
+                <span>{isDark ? 'Modo Claro' : 'Modo Oscuro'}</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <div
+                className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50 animate-pulse cursor-pointer my-0.5"
+                title="Motor Evaluador PCM Activo"
+              />
+              <button
+                onClick={() => setIsDark(!isDark)}
+                title={isDark ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro'}
+                className="w-10 h-10 flex items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
+              </button>
+            </>
+          )}
         </div>
       </aside>
 
-      {/* DRAWER MÓVIL */}
+      {/* DRAWER MÓVIL (< lg) */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden flex">
-          <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
-          <div className="relative w-72 bg-white dark:bg-[#0c121e] border-r border-slate-200 dark:border-slate-800 flex flex-col h-full shadow-2xl z-10">
+          <div
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm transition-opacity"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <div className="relative w-72 max-w-[85vw] bg-white dark:bg-[#0c121e] border-r border-slate-200 dark:border-slate-800 flex flex-col h-full shadow-2xl z-10 animate-in slide-in-from-left duration-200">
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-2xl bg-sky-600 text-white flex items-center justify-center">
-                  <ShieldCheck className="w-4 h-4" />
+                <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-sky-600 to-blue-700 text-white flex items-center justify-center shadow-md shadow-sky-500/20">
+                  <ShieldCheck className="w-4 h-4 stroke-[2.5]" />
                 </div>
-                <span className="font-heading font-black text-sm text-slate-900 dark:text-white">SGD-Madurez</span>
+                <div>
+                  <div className="font-heading font-black text-sm text-slate-900 dark:text-white leading-tight">
+                    SGD-Madurez
+                  </div>
+                  <div className="text-[9px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-400">
+                    PCM • SGTD • CND
+                  </div>
+                </div>
               </div>
-              <button onClick={() => setIsMobileMenuOpen(false)} className="p-1.5 text-slate-400 hover:text-slate-600 rounded-2xl">
+              <button
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <nav className="flex-1 p-3 space-y-1">
+
+            <div className="m-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+              <div className="text-[10px] font-bold text-sky-700 dark:text-sky-400 uppercase tracking-wider mb-0.5">
+                Entidad Evaluada
+              </div>
+              <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                {configInst.siglas} - {configInst.entidad_nombre}
+              </div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                Marco ENGD 2026–2030
+              </div>
+            </div>
+
+            <nav className="flex-1 px-3 space-y-1.5 overflow-y-auto">
               {[
                 { id: 'dashboard', label: 'Dashboard Ejecutivo', icon: LayoutDashboard },
-                { id: 'matriz', label: 'Matriz de Diagnóstico', icon: CheckSquare },
-                { id: 'evidencias', label: 'Inventario Evidencias', icon: FolderGit2 },
-                { id: 'plan', label: 'Plan de Acción', icon: Target },
+                { id: 'matriz', label: 'Matriz de Diagnóstico', icon: CheckSquare, badge: stats ? `${stats.total_respondidas}/${stats.total_preguntas}` : '0/75' },
+                { id: 'evidencias', label: 'Inventario Evidencias', icon: FolderGit2, badge: stats ? `${stats.total_evidencias}` : '0' },
+                { id: 'plan', label: 'Plan de Acción', icon: Target, badge: iniciativas.length.toString() },
                 { id: 'exportar', label: 'Exportación Oficial', icon: DownloadCloud },
               ].map((item) => {
                 const Icon = item.icon;
@@ -366,22 +510,40 @@ export const App: React.FC = () => {
                       setActiveTab(item.id as any);
                       setIsMobileMenuOpen(false);
                     }}
-                    className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl font-bold text-xs ${
-                      isActive ? 'bg-[#1a4066] text-white' : 'text-slate-600 dark:text-slate-300'
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl font-semibold text-xs sm:text-sm transition-all ${
+                      isActive
+                        ? 'bg-[#1a4066] text-white shadow-md'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
-                    <Icon className="w-4 h-4" />
-                    <span>{item.label}</span>
+                    <div className="flex items-center gap-2.5">
+                      <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`} />
+                      <span>{item.label}</span>
+                    </div>
+                    {item.badge && (
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        isActive
+                          ? 'bg-white/20 text-white'
+                          : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                      }`}>
+                        {item.badge}
+                      </span>
+                    )}
                   </button>
                 );
               })}
             </nav>
-            <div className="p-4 border-t border-slate-200 dark:border-slate-800">
+
+            <div className="p-3.5 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
+              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 px-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50 animate-pulse" />
+                <span>Motor Evaluador PCM Activo</span>
+              </div>
               <button
                 onClick={() => setIsDark(!isDark)}
-                className="w-full flex items-center justify-center gap-2 py-2 rounded-2xl bg-slate-100 dark:bg-slate-900 text-xs font-bold"
+                className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
               >
-                {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
+                {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
                 <span>{isDark ? 'Modo Claro' : 'Modo Oscuro'}</span>
               </button>
             </div>
@@ -389,20 +551,32 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* CONTENIDO PRINCIPAL */}
+      {/* CONTENIDO PRINCIPAL FLUIDO */}
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         
         {/* TOPBAR COMPACTA Y RESPONSIVE */}
-        <header className="sticky top-0 z-20 bg-white/95 dark:bg-[#0c121e]/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-3 sm:px-8 py-3 sm:py-4 flex items-center justify-between gap-2">
+        <header className="sticky top-0 z-20 bg-white/95 dark:bg-[#0c121e]/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-3 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            {/* Botón menú móvil (< lg) */}
             <button
               onClick={() => setIsMobileMenuOpen(true)}
               className="lg:hidden p-2 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex-shrink-0"
+              title="Abrir menú"
             >
               <Menu className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
+
+            {/* Botón colapsar menú escritorio (>= lg) */}
+            <button
+              onClick={toggleSidebar}
+              className="hidden lg:flex p-2 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all flex-shrink-0 cursor-pointer"
+              title={isSidebarCollapsed ? "Expandir menú (Ctrl+B)" : "Contraer menú (Ctrl+B)"}
+            >
+              <PanelLeft className="w-4 h-4" />
+            </button>
+
             <div className="min-w-0">
-              <h1 className="font-heading font-black text-sm sm:text-xl lg:text-2xl text-slate-900 dark:text-white leading-tight truncate">
+              <h1 className="font-heading font-black text-sm sm:text-lg lg:text-xl text-slate-900 dark:text-white leading-tight truncate">
                 {activeTab === 'dashboard' && 'Dashboard Ejecutivo'}
                 {activeTab === 'matriz' && 'Matriz de Diagnóstico'}
                 {activeTab === 'evidencias' && 'Inventario de Evidencias'}
@@ -415,11 +589,11 @@ export const App: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             <a
               href="/api/exportar/matriz-excel"
               download
-              className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-xs text-slate-800 dark:text-slate-200 shadow-xs transition-all"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-xs text-slate-800 dark:text-slate-200 shadow-xs transition-all"
             >
               <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
               <span>Exportar Excel</span>
@@ -429,10 +603,11 @@ export const App: React.FC = () => {
                 setPreselectedPreguntaCodigo(preguntas[0]?.codigo || '1.1');
                 setIsEvidenciaModalOpen(true);
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs sm:text-sm shadow-md transition-all"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs sm:text-sm shadow-md transition-all cursor-pointer"
             >
               <PlusCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span>Subir Evidencia</span>
+              <span className="hidden sm:inline">Subir Evidencia</span>
+              <span className="sm:hidden">Evidencia</span>
             </button>
           </div>
         </header>

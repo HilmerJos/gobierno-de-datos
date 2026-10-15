@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Pregunta } from '../types';
-import { Layers } from 'lucide-react';
+import { Layers, ChevronDown, ChevronUp } from 'lucide-react';
 
 // ==============================================================================
 // 1. TARJETA RESUMEN DE PROGRESO Y SEMÁFORO (COLUMNA 3 - CUARTA IMAGEN)
@@ -101,6 +101,8 @@ export const QuestionNavigator: React.FC<QuestionNavigatorProps> = ({
   onSelectPregunta,
   dimensionCodigo
 }) => {
+  const [isMobileExpanded, setIsMobileExpanded] = useState(false);
+
   const getSemaforoStatus = (q: Pregunta) => {
     if (!q.respuesta) return 'pendiente';
     const v = q.respuesta.valor_nivel;
@@ -114,16 +116,65 @@ export const QuestionNavigator: React.FC<QuestionNavigatorProps> = ({
       
       {/* Encabezado del listado de preguntas */}
       <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
-        <span className="font-heading font-bold text-xs text-slate-900 dark:text-white">
-          Índice de Preguntas ({preguntas.length})
-        </span>
-        <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
-          Dimensión {dimensionCodigo}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="font-heading font-bold text-xs text-slate-900 dark:text-white">
+            Índice de Preguntas ({preguntas.length})
+          </span>
+          <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+            Dim. {dimensionCodigo}
+          </span>
+        </div>
+
+        {/* Botón expandir/contraer en pantallas móviles (< lg) */}
+        <button
+          type="button"
+          onClick={() => setIsMobileExpanded(!isMobileExpanded)}
+          className="lg:hidden flex items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200"
+        >
+          <span>{isMobileExpanded ? 'Contraer' : 'Ver todas'}</span>
+          {isMobileExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        </button>
+      </div>
+
+      {/* MÓVIL: Tira de selección horizontal rápida (< lg) */}
+      <div className="flex lg:hidden overflow-x-auto pb-1 gap-1.5 scrollbar-thin">
+        {preguntas.map((q) => {
+          const semaforo = getSemaforoStatus(q);
+          const isSelected = activeCodigo === q.codigo;
+          const valor = q.respuesta ? q.respuesta.valor_nivel : null;
+
+          let chipBg = '';
+          if (isSelected) {
+            chipBg = 'bg-sky-600 text-white ring-2 ring-sky-400 font-bold';
+          } else if (semaforo === 'verde') {
+            chipBg = 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-300';
+          } else if (semaforo === 'ambar') {
+            chipBg = 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/50 dark:text-amber-300';
+          } else if (semaforo === 'rojo') {
+            chipBg = 'bg-rose-50 text-rose-800 border-rose-300 dark:bg-rose-950/50 dark:text-rose-300';
+          } else {
+            chipBg = 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400';
+          }
+
+          return (
+            <button
+              key={`chip-${q.codigo}`}
+              type="button"
+              onClick={() => onSelectPregunta(q.codigo)}
+              className={`flex-shrink-0 px-2.5 py-1.5 rounded-xl text-xs border font-medium transition-all flex items-center gap-1.5 ${chipBg}`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${
+                isSelected ? 'bg-white' : semaforo === 'verde' ? 'bg-emerald-500' : semaforo === 'ambar' ? 'bg-amber-500' : semaforo === 'rojo' ? 'bg-rose-500' : 'bg-slate-400'
+              }`} />
+              <span className="font-bold">{q.codigo}</span>
+              {valor !== null && <span className="text-[10px] opacity-80">{valor}pts</span>}
+            </button>
+          );
+        })}
       </div>
 
       {/* Botones de Preguntas Individuales (Semáforo Rojo, Ámbar, Verde) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-1 gap-1.5 lg:max-h-[calc(100vh-270px)] lg:overflow-y-auto lg:pr-1 scrollbar-thin">
+      <div className={`${isMobileExpanded ? 'grid' : 'hidden lg:grid'} grid-cols-2 sm:grid-cols-3 lg:grid-cols-1 gap-1.5 lg:max-h-[calc(100vh-270px)] lg:overflow-y-auto lg:pr-1 scrollbar-thin`}>
         {preguntas.map((q) => {
           const semaforo = getSemaforoStatus(q);
           const isSelected = activeCodigo === q.codigo;
