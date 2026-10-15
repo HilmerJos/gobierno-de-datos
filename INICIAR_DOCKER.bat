@@ -21,10 +21,10 @@ docker compose up -d --build
 echo.
 echo ===============================================================================
 echo El sistema esta en ejecucion en Docker:
-echo   - Plataforma Web: http://localhost:8000
-echo   - Base de Datos:  PostgreSQL en puerto 5432 (sgd_madurez)
+echo   - Plataforma Web: http://localhost:8001
+echo   - Base de Datos:  PostgreSQL en puerto host 5434 (sgd_madurez)
 echo ===============================================================================
 echo.
 echo Abriendo navegador web...
-start http://localhost:8000
+start http://localhost:8001
 pause

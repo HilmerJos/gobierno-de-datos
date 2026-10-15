@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: postgrespassword
       POSTGRES_DB: sgd_madurez
     ports:
-      - "5433:5432"
+      - "5434:5432"
     volumes:
       - sgd_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -35,7 +35,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg2://postgres:postgrespassword@db:5432/sgd_madurez
     ports:
-      - "8000:8000"
+      - "8001:8000"
     volumes:
       - sgd_uploads_data:/app/sgd_sistema/uploads
 

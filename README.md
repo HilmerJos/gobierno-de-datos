@@ -50,13 +50,13 @@ El sistema incluye configuración multi-etapa completa con **PostgreSQL 16** y *
    # Detener servicios
    docker compose down
    ```
-   - **Plataforma Web:** `http://localhost:8000`
-   - **Base de Datos (Navicat / DBeaver):** PostgreSQL en puerto `5433` (Base de datos: `sgd_madurez`, password: `postgrespassword`)
+   - **Plataforma Web:** `http://localhost:8001`
+   - **Base de Datos (Navicat / DBeaver):** PostgreSQL en puerto `5434` (Base de datos: `sgd_madurez`, password: `postgrespassword`)
 
 ### Modo Desarrollo Frontend (Vite HMR)
 Si deseas trabajar con recarga en vivo del frontend:
 ```bash
-cd "d:\OTI 2026\GOBIERNO DE DATOS\sgd_sistema\frontend"
+cd sgd_sistema/frontend
 npm run dev
 ```
 
