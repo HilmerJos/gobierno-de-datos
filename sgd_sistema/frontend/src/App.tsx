@@ -9,7 +9,7 @@ import {
 } from './types';
 import { CustomSelect, SelectOption } from './components/CustomSelect';
 import { QuestionCard } from './components/QuestionCard';
-import { QuestionNavigator } from './components/QuestionNavigator';
+import { QuestionNavigator, DimensionSummaryCard } from './components/QuestionNavigator';
 import { RadarChart } from './components/RadarChart';
 import { BrechasChart } from './components/BrechasChart';
 import { EvidenciasModal } from './components/EvidenciasModal';
@@ -650,41 +650,54 @@ export const App: React.FC = () => {
           {activeTab === 'matriz' && (
             <div className="space-y-4 sm:space-y-6">
               
-              {/* SELECTOR DE DIMENSIÓN ESTILO IMAGEN 3 */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 sm:p-5 shadow-xs">
-                <CustomSelect
-                  label="SELECCIONAR DIMENSIÓN A EVALUAR *"
-                  options={dimensionSelectOptions}
-                  value={currentDimension}
-                  onChange={(val) => setCurrentDimension(val)}
-                  placeholder="Seleccionar dimensión del modelo..."
-                />
-              </div>
-
-              {/* BANNER DE DIMENSIÓN COMPACTO Y RESPONSIVE (SOLUCIONA IMAGEN 1) */}
-              {curDimObj && (
-                <div className="p-3.5 sm:p-5 rounded-2xl bg-gradient-to-r from-sky-900 to-blue-950 text-white border border-sky-800/80 shadow-md flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5 sm:gap-4 min-w-0">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center font-heading font-black text-sm sm:text-lg text-sky-300 flex-shrink-0">
-                      {curDimObj.codigo}
-                    </div>
-                    <div className="min-w-0">
-                      <h2 className="font-heading font-bold text-xs sm:text-base text-white truncate">
-                        {curDimObj.nombre}
-                      </h2>
-                      <p className="text-[10px] sm:text-xs text-sky-200 truncate">
-                        {curDimObj.total_preguntas} componentes obligatorios según guía PCM
-                      </p>
-                    </div>
-                  </div>
-                  <div className="bg-white/15 px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl text-center flex-shrink-0 border border-white/10">
-                    <span className="font-heading font-black text-sm sm:text-xl text-sky-300 block">
-                      {curDimObj.puntaje.toFixed(2)}
-                    </span>
-                    <span className="text-[9px] sm:text-[10px] text-sky-200 block uppercase font-bold">/ 5.00 pts</span>
-                  </div>
+              {/* FILA SUPERIOR EN 3 COLUMNAS: COL 1 SELECTOR | COL 2 BANNER DIMENSIÓN | COL 3 RESUMEN SEMÁFORO */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-4 items-stretch w-full">
+                
+                {/* PRIMERA COLUMNA (SEGUNDA IMAGEN): SELECTOR DE DIMENSIÓN */}
+                <div className="lg:col-span-4 xl:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 sm:p-3.5 shadow-xs flex flex-col justify-center">
+                  <CustomSelect
+                    label="SELECCIONAR DIMENSIÓN A EVALUAR *"
+                    options={dimensionSelectOptions}
+                    value={currentDimension}
+                    onChange={(val) => setCurrentDimension(val)}
+                    placeholder="Seleccionar dimensión del modelo..."
+                  />
                 </div>
-              )}
+
+                {/* SEGUNDA COLUMNA (TERCERA IMAGEN): BANNER AZUL DE LA DIMENSIÓN */}
+                {curDimObj && (
+                  <div className="lg:col-span-5 xl:col-span-5 p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-sky-900 to-blue-950 text-white border border-sky-800/80 shadow-md flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                      <div className="w-10 h-10 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center font-heading font-black text-sm text-sky-300 flex-shrink-0">
+                        {curDimObj.codigo}
+                      </div>
+                      <div className="min-w-0">
+                        <h2 className="font-heading font-bold text-xs sm:text-sm text-white truncate leading-snug">
+                          {curDimObj.nombre}
+                        </h2>
+                        <p className="text-[10px] text-sky-200 truncate mt-0.5">
+                          {curDimObj.total_preguntas} componentes obligatorios según guía PCM
+                        </p>
+                      </div>
+                    </div>
+                    <div className="bg-white/15 px-3 py-1.5 rounded-2xl text-center flex-shrink-0 border border-white/10">
+                      <span className="font-heading font-black text-sm sm:text-base text-sky-300 block leading-none">
+                        {curDimObj.puntaje.toFixed(2)}
+                      </span>
+                      <span className="text-[8px] sm:text-[9px] text-sky-200 block uppercase font-bold mt-0.5">/ 5.00 pts</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* TERCERA COLUMNA (CUARTA IMAGEN): RESUMEN DE PROGRESO Y SEMÁFORO */}
+                <div className="lg:col-span-3 xl:col-span-3">
+                  <DimensionSummaryCard
+                    preguntas={preguntas}
+                    dimensionCodigo={currentDimension}
+                  />
+                </div>
+
+              </div>
 
               {/* LAYOUT FLUIDO A PANTALLA COMPLETA: PANEL IZQUIERDO VERTICAL + TARJETA DE PREGUNTA A LA DERECHA */}
               <div className="flex flex-col lg:flex-row gap-5 items-start w-full">
