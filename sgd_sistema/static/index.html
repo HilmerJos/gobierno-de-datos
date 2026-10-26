@@ -1,18 +1,22 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SGD-Madurez | Sistema de Evaluación de Madurez y Plan de Acción de Gobierno de Datos</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap"
+    rel="stylesheet">
   <!-- Chart.js para el Radar y Gráficos -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="stylesheet" href="app.css">
 </head>
+
 <body class="theme-dark">
   <div class="app-layout">
     <!-- BARRA LATERAL / SIDEBAR -->
@@ -81,15 +85,18 @@
           <h1 id="page-title">Dashboard Ejecutivo de Madurez</h1>
           <p id="page-subtitle">Monitoreo continuo de las 8 dimensiones y nivel institucional de gobierno de datos</p>
         </div>
-        <div class="topbar-actions">
-          <button class="btn btn-outline" id="btn-quick-export">
-            <i data-lucide="file-spreadsheet"></i>
-            <span>Exportar Excel</span>
-          </button>
-          <button class="btn btn-primary" id="btn-nueva-evidencia-top">
-            <i data-lucide="plus-circle"></i>
-            <span>Subir Evidencia</span>
-          </button>
+        <div class="topbar-actions" style="display: flex; align-items: center;">
+          <select id="select-dimension-topbar"
+            style="background: #0c121e; color: #ffffff; border: 1.5px solid #0284c7; border-radius: 9999px; padding: 6px 16px; font-weight: 700; font-size: 13px; text-transform: uppercase; cursor: pointer; outline: none; min-width: 280px; max-width: 100%;">
+            <option value="D1">D1 - ESTRATEGIA DE GOBIERNO DE DATOS</option>
+            <option value="D2">D2 - VIABILIDAD FINANCIERA</option>
+            <option value="D3">D3 - ORGANIZACIÓN Y CULTURA DE DATOS</option>
+            <option value="D4">D4 - ARQUITECTURA DE DATOS</option>
+            <option value="D5">D5 - CALIDAD DE DATOS</option>
+            <option value="D6">D6 - SEGURIDAD DE DATOS</option>
+            <option value="D7">D7 - INFRAESTRUCTURA TECNOLÓGICA Y OPERACIONES DE DATOS</option>
+            <option value="D8">D8 - INTEROPERABILIDAD Y DATOS ABIERTOS</option>
+          </select>
         </div>
       </header>
 
@@ -224,7 +231,8 @@
             <div class="dim-banner-code" id="dim-banner-code">D1</div>
             <div>
               <h2 class="dim-banner-title" id="dim-banner-title">Estrategia de Datos y Programa de Gestión de Datos</h2>
-              <p class="dim-banner-desc" id="dim-banner-desc">Evalúa el desarrollo de la EGD, toma de decisiones basada en datos y formalización del dato como activo estratégico.</p>
+              <p class="dim-banner-desc" id="dim-banner-desc">Evalúa el desarrollo de la EGD, toma de decisiones basada
+                en datos y formalización del dato como activo estratégico.</p>
             </div>
           </div>
           <div class="dim-banner-score">
@@ -246,7 +254,8 @@
           <div class="card-header flex-between">
             <div class="card-title-group">
               <h3 class="card-title">Inventario Centralizado de Evidencias Digitales</h3>
-              <p class="card-desc">Conforme a la estructura oficial requerida por la PCM / CND (10 columnas estándar)</p>
+              <p class="card-desc">Conforme a la estructura oficial requerida por la PCM / CND (10 columnas estándar)
+              </p>
             </div>
             <div class="btn-group">
               <button class="btn btn-outline" id="btn-export-evidencias-excel">
@@ -285,7 +294,8 @@
             </div>
             <div class="filter-group flex-1">
               <label>Búsqueda rápida:</label>
-              <input type="text" id="filtro-evidencia-search" class="form-input" placeholder="Buscar por nombre, código o responsable...">
+              <input type="text" id="filtro-evidencia-search" class="form-input"
+                placeholder="Buscar por nombre, código o responsable...">
             </div>
           </div>
 
@@ -325,7 +335,8 @@
           <div class="form-grid-3">
             <div class="form-group">
               <label>Nombre de la Entidad:</label>
-              <input type="text" id="plan-entidad-nombre" class="form-input" value="Oficina de Tecnologías de la Información">
+              <input type="text" id="plan-entidad-nombre" class="form-input"
+                value="Oficina de Tecnologías de la Información">
             </div>
             <div class="form-group">
               <label>Siglas Institucionales:</label>
@@ -388,7 +399,8 @@
               </tbody>
               <tfoot>
                 <tr class="tfoot-summary">
-                  <td colspan="5" class="text-right"><strong>Índice de Cumplimiento Institucional Ponderado:</strong></td>
+                  <td colspan="5" class="text-right"><strong>Índice de Cumplimiento Institucional Ponderado:</strong>
+                  </td>
                   <td id="tfoot-total-peso"><strong>100%</strong></td>
                   <td>-</td>
                   <td id="tfoot-total-costo"><strong>S/ 0.00</strong></td>
@@ -410,7 +422,8 @@
               <i data-lucide="table"></i>
             </div>
             <h3 class="export-title">Matriz de Evaluación Oficial PCM</h3>
-            <p class="export-desc">Genera el archivo idéntico a la plantilla PCM con las 75 preguntas evaluadas, fórmulas automáticas y comentarios inyectados.</p>
+            <p class="export-desc">Genera el archivo idéntico a la plantilla PCM con las 75 preguntas evaluadas,
+              fórmulas automáticas y comentarios inyectados.</p>
             <div class="export-format-badge">Formato: .XLSX (Microsoft Excel)</div>
             <a href="/api/exportar/matriz-excel" class="btn btn-success btn-block mt-4" download>
               <i data-lucide="download"></i> Descargar Matriz de Evaluación
@@ -423,7 +436,8 @@
               <i data-lucide="folder-archive"></i>
             </div>
             <h3 class="export-title">Inventario de Evidencias Digitales</h3>
-            <p class="export-desc">Genera el archivo oficial de inventario con las 8 pestañas temáticas (D1 a D8) y todas las evidencias registradas en el sistema.</p>
+            <p class="export-desc">Genera el archivo oficial de inventario con las 8 pestañas temáticas (D1 a D8) y
+              todas las evidencias registradas en el sistema.</p>
             <div class="export-format-badge">Formato: .XLSX (Microsoft Excel)</div>
             <a href="/api/exportar/evidencias-excel" class="btn btn-cyan btn-block mt-4" download>
               <i data-lucide="download"></i> Descargar Inventario de Evidencias
@@ -436,7 +450,8 @@
               <i data-lucide="file-text"></i>
             </div>
             <h3 class="export-title">Plan de Acción de Gobierno de Datos</h3>
-            <p class="export-desc">Genera el documento Word formal según la estructura obligatoria de la SGTD/PCM listo para firma del Comité CGTD.</p>
+            <p class="export-desc">Genera el documento Word formal según la estructura obligatoria de la SGTD/PCM listo
+              para firma del Comité CGTD.</p>
             <div class="export-format-badge">Formato: .DOCX (Microsoft Word)</div>
             <a href="/api/exportar/plan-docx" class="btn btn-primary btn-block mt-4" download>
               <i data-lucide="download"></i> Descargar Plan de Acción Formal
@@ -456,81 +471,90 @@
       </div>
       <div class="modal-body">
         <form id="form-evidencia">
-          <input type="hidden" id="evidencia-id">
-          
-          <div class="form-group">
-            <label>Código de Pregunta a Vincular: <span class="req">*</span></label>
-            <select id="evidencia-pregunta" class="form-select" required>
-              <!-- Opciones de preguntas 1.1 a 8.8 -->
-            </select>
-          </div>
+          <div class="modal-scrollable-content">
+            <input type="hidden" id="evidencia-id">
 
-          <div class="form-grid-2">
             <div class="form-group">
-              <label>Origen: <span class="req">*</span></label>
-              <select id="evidencia-origen" class="form-select" required>
-                <option value="Interno">Interno (Producido por la entidad)</option>
-                <option value="Externo">Externo (Proveedores, convenios)</option>
-                <option value="Normativo">Normativo / Legal</option>
+              <label>Código de Pregunta a Vincular: <span class="req">*</span></label>
+              <select id="evidencia-pregunta" class="form-select" required>
+                <!-- Opciones de preguntas 1.1 a 8.8 -->
               </select>
             </div>
-            <div class="form-group">
-              <label>Tipo de Evidencia: <span class="req">*</span></label>
-              <select id="evidencia-tipo" class="form-select" required>
-                <option value="Documento normativo / Directiva">Documento normativo / Directiva</option>
-                <option value="Plan o Estrategia Formal">Plan o Estrategia Formal</option>
-                <option value="Acta de Comité / Reunión">Acta de Comité / Reunión</option>
-                <option value="Informe Técnico / Reporte">Informe Técnico / Reporte</option>
-                <option value="Diagrama / Modelo de Arquitectura">Diagrama / Modelo de Arquitectura</option>
-                <option value="Enlace a Portal / Repositorio Git">Enlace a Portal / Repositorio Git</option>
-                <option value="Captura de Pantalla / Sistema">Captura de Pantalla / Sistema</option>
-              </select>
-            </div>
-          </div>
 
-          <div class="form-group">
-            <label>Nombre de la Evidencia: <span class="req">*</span></label>
-            <input type="text" id="evidencia-nombre" class="form-input" placeholder="Ej: Directiva de Seguridad de Información OTI-DIR-002" required>
-          </div>
-
-          <div class="form-group">
-            <label>Adjuntar Archivo (o Enlace Web):</label>
-            <div class="file-upload-box">
-              <input type="file" id="evidencia-file" class="file-input">
-              <div class="upload-tip">Subir archivo (PDF, DOCX, XLSX, PNG, ZIP hasta 50MB)</div>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label>Origen: <span class="req">*</span></label>
+                <select id="evidencia-origen" class="form-select" required>
+                  <option value="Interno">Interno (Producido por la entidad)</option>
+                  <option value="Externo">Externo (Proveedores, convenios)</option>
+                  <option value="Normativo">Normativo / Legal</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Tipo de Evidencia: <span class="req">*</span></label>
+                <select id="evidencia-tipo" class="form-select" required>
+                  <option value="Documento normativo / Directiva">Documento normativo / Directiva</option>
+                  <option value="Plan o Estrategia Formal">Plan o Estrategia Formal</option>
+                  <option value="Acta de Comité / Reunión">Acta de Comité / Reunión</option>
+                  <option value="Informe Técnico / Reporte">Informe Técnico / Reporte</option>
+                  <option value="Diagrama / Modelo de Arquitectura">Diagrama / Modelo de Arquitectura</option>
+                  <option value="Enlace a Portal / Repositorio Git">Enlace a Portal / Repositorio Git</option>
+                  <option value="Captura de Pantalla / Sistema">Captura de Pantalla / Sistema</option>
+                </select>
+              </div>
             </div>
-            <div class="or-separator">O ingresa un enlace / URL:</div>
-            <input type="text" id="evidencia-url" class="form-input" placeholder="https://sharepoint.entidad.gob.pe/... o enlace a Drive/Git">
-          </div>
 
-          <div class="form-group">
-            <label>Descripción del Contenido (¿Cómo sustenta la pregunta?): <span class="req">*</span></label>
-            <textarea id="evidencia-desc" class="form-textarea" rows="3" placeholder="Detalle cómo este medio de verificación demuestra el nivel de madurez marcado..." required></textarea>
-          </div>
+            <div class="form-group">
+              <label>Nombre de la Evidencia: <span class="req">*</span></label>
+              <input type="text" id="evidencia-nombre" class="form-input"
+                placeholder="Ej: Directiva de Seguridad de Información OTI-DIR-002" required>
+            </div>
 
-          <div class="form-grid-2">
             <div class="form-group">
-              <label>Responsable: <span class="req">*</span></label>
-              <input type="text" id="evidencia-responsable" class="form-input" placeholder="Apellidos y Nombres" required>
+              <label>Adjuntar Archivo (o Enlace Web):</label>
+              <div class="file-upload-box">
+                <input type="file" id="evidencia-file" class="file-input">
+                <div class="upload-tip">Subir archivo (PDF, DOCX, XLSX, PNG, ZIP hasta 50MB)</div>
+              </div>
+              <div class="or-separator">O ingresa un enlace / URL:</div>
+              <input type="text" id="evidencia-url" class="form-input"
+                placeholder="https://sharepoint.entidad.gob.pe/... o enlace a Drive/Git">
             </div>
-            <div class="form-group">
-              <label>Área / Unidad Orgánica: <span class="req">*</span></label>
-              <input type="text" id="evidencia-area" class="form-input" placeholder="Ej: Área de Base de Datos y Redes" required>
-            </div>
-          </div>
 
-          <div class="form-grid-2">
             <div class="form-group">
-              <label>Estado de Validación:</label>
-              <select id="evidencia-estado" class="form-select">
-                <option value="En Revisión">En Revisión</option>
-                <option value="Validado">Validado</option>
-                <option value="Observado">Observado</option>
-              </select>
+              <label>Descripción del Contenido (¿Cómo sustenta la pregunta?): <span class="req">*</span></label>
+              <textarea id="evidencia-desc" class="form-textarea" rows="3"
+                placeholder="Detalle cómo este medio de verificación demuestra el nivel de madurez marcado..."
+                required></textarea>
             </div>
-            <div class="form-group">
-              <label>Comentario del Evaluador / CND:</label>
-              <input type="text" id="evidencia-comentarios-rev" class="form-input" placeholder="Observaciones u observaciones de mejora...">
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label>Responsable: <span class="req">*</span></label>
+                <input type="text" id="evidencia-responsable" class="form-input" placeholder="Apellidos y Nombres"
+                  required>
+              </div>
+              <div class="form-group">
+                <label>Área / Unidad Orgánica: <span class="req">*</span></label>
+                <input type="text" id="evidencia-area" class="form-input"
+                  placeholder="Ej: Área de Base de Datos y Redes" required>
+              </div>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label>Estado de Validación:</label>
+                <select id="evidencia-estado" class="form-select">
+                  <option value="En Revisión">En Revisión</option>
+                  <option value="Validado">Validado</option>
+                  <option value="Observado">Observado</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Comentario del Evaluador / CND:</label>
+                <input type="text" id="evidencia-comentarios-rev" class="form-input"
+                  placeholder="Observaciones u observaciones de mejora...">
+              </div>
             </div>
           </div>
 
@@ -548,4 +572,5 @@
 
   <script src="app.js"></script>
 </body>
+
 </html>

@@ -36,8 +36,12 @@ services:
       DATABASE_URL: postgresql+psycopg2://postgres:postgrespassword@db:5432/sgd_madurez
     ports:
       - "8001:8000"
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     volumes:
       - sgd_uploads_data:/app/sgd_sistema/uploads
+      - ./sgd_sistema/frontend/dist:/app/sgd_sistema/frontend/dist
+      - ./sgd_sistema/backend:/app/sgd_sistema/backend
+      - ./sgd_sistema/static:/app/sgd_sistema/static
 
 volumes:
   sgd_postgres_data:

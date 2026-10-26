@@ -173,8 +173,8 @@ export const QuestionNavigator: React.FC<QuestionNavigatorProps> = ({
         })}
       </div>
 
-      {/* Botones de Preguntas Individuales (Semáforo Rojo, Ámbar, Verde) */}
-      <div className={`${isMobileExpanded ? 'grid' : 'hidden lg:grid'} grid-cols-2 sm:grid-cols-3 lg:grid-cols-1 gap-1.5`}>
+      {/* Botones de Preguntas Individuales en 2 COLUMNAS (Semáforo Rojo, Ámbar, Verde) */}
+      <div className={`${isMobileExpanded ? 'grid' : 'hidden lg:grid'} grid-cols-2 gap-1.5 max-h-[calc(100vh-320px)] overflow-y-auto pr-1 scrollbar-thin`}>
         {preguntas.map((q) => {
           const semaforo = getSemaforoStatus(q);
           const isSelected = activeCodigo === q.codigo;
@@ -220,19 +220,19 @@ export const QuestionNavigator: React.FC<QuestionNavigatorProps> = ({
               key={q.codigo}
               type="button"
               onClick={() => onSelectPregunta(q.codigo)}
-              className={`w-full flex items-center justify-between py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer text-left ${buttonClasses}`}
-              title={`Pregunta ${q.codigo}: ${q.respuesta ? `${valor}.0 pts` : 'Pendiente de evaluación'}`}
+              className={`w-full flex items-center justify-between py-1.5 sm:py-2 px-2 sm:px-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer text-left ${buttonClasses}`}
+              title={`Pregunta ${q.codigo}: ${q.respuesta ? (valor === -1 ? 'No Aplica (N/A)' : `${valor}.0 pts`) : 'Pendiente de evaluación'}`}
             >
-              <div className="flex items-center gap-2 min-w-0">
-                <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${dotColor}`}></span>
-                <span className="font-heading font-black tracking-tight">{q.codigo}</span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotColor}`}></span>
+                <span className="font-heading font-black tracking-tight text-xs">{q.codigo}</span>
               </div>
 
               {valor !== null ? (
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-black flex-shrink-0 ${
+                <span className={`text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-full font-black flex-shrink-0 ${
                   isSelected ? 'bg-black/25 text-white' : 'bg-white/80 dark:bg-slate-900/60 shadow-xs'
                 }`}>
-                  {valor}.0 pts
+                  {valor === -1 ? 'N/A' : `${valor}.0`}
                 </span>
               ) : (
                 <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0 opacity-80 ${

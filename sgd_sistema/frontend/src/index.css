@@ -23,3 +23,26 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(100, 116, 139, 0.7);
 }
+
+/* React-Toastify Premium Custom Styling */
+.Toastify__toast {
+  border-radius: 1rem !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-size: 0.8125rem !important;
+  font-weight: 600 !important;
+  box-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.15), 0 4px 10px -2px rgba(0, 0, 0, 0.08) !important;
+  backdrop-filter: blur(8px);
+}
+.Toastify__toast--dark {
+  background-color: #0f172a !important;
+  border: 1px solid rgba(51, 65, 85, 0.8) !important;
+  color: #f1f5f9 !important;
+}
+.Toastify__toast--light {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(226, 232, 240, 0.9) !important;
+  color: #0f172a !important;
+}
+.Toastify__progress-bar {
+  height: 3px !important;
+}

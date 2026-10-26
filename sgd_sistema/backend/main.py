@@ -64,10 +64,24 @@ class PreguntaModel(Base):
     id = Column(Integer, primary_key=True, index=True)
     dimension_codigo = Column(String(10), index=True)
     codigo = Column(String(20), unique=True, index=True)
+    titulo = Column(String(255), nullable=True)
     enunciado = Column(Text)
     explicacion = Column(Text)
     resultados_esperados = Column(Text)
+    admite_na = Column(String(255), default="No")
     orden = Column(Integer)
+    area_responsable = Column(String(50), default="OTI", index=True)
+
+class UserModel(Base):
+    __tablename__ = "usuarios"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String(50), unique=True, index=True)
+    password = Column(String(100))
+    nombre_completo = Column(String(200))
+    siglas = Column(String(20), index=True)
+    rol = Column(String(50))
+    area = Column(String(200))
+    activo = Column(Integer, default=1)
 
 class OpcionModel(Base):
     __tablename__ = "opciones"
@@ -132,8 +146,19 @@ class IniciativaModel(Base):
     fecha_inicio = Column(String(50))
     fecha_fin = Column(String(50))
 
-# Crear tablas
+# Crear tablas y ejecutar migración de columnas
 Base.metadata.create_all(bind=engine)
+
+def check_and_migrate_db():
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("ALTER TABLE preguntas ADD COLUMN area_responsable VARCHAR(50) DEFAULT 'OTI'"))
+            conn.commit()
+            print("[Migration] Columna 'area_responsable' verificada/creada exitosamente.")
+        except Exception:
+            pass
+
+check_and_migrate_db()
 
 def get_db():
     db = SessionLocal()
@@ -142,16 +167,113 @@ def get_db():
     finally:
         db.close()
 
+# Asignaciones iniciales coherentes por competencia institucional
+DEFAULT_AREA_ASSIGNMENTS = {
+    # D1: Estrategia de Gobierno de Datos
+    "1.1": "UPM", "1.2": "UPM", "1.3": "UP", "1.4": "UE", "1.5": "OTI",
+    # D2: Liderazgo y Patrocinio
+    "2.1": "UPM", "2.2": "OAJ", "2.3": "UP", "2.4": "URH",
+    # D3: Estructura de Gobernanza de Datos
+    "3.1": "UPM", "3.2": "OAJ", "3.3": "URH", "3.4": "URH", "3.5": "OTI",
+    "3.6": "OAJ", "3.7": "OTI", "3.8": "URH", "3.9": "OTI", "3.10": "OAJ",
+    "3.11": "UPM", "3.12": "OTI", "3.13": "UP", "3.14": "UE", "3.15": "URH", "3.16": "OTI",
+    # D4: Arquitectura de Datos (12 preguntas)
+    "4.1": "OTI", "4.2": "OTI", "4.3": "OTI", "4.4": "OTI", "4.5": "OTI", "4.6": "OTI",
+    "4.7": "OTI", "4.8": "OTI", "4.9": "OTI", "4.10": "OTI", "4.11": "OTI", "4.12": "OTI",
+    # D5: Calidad de Datos (9 preguntas)
+    "5.1": "OTI", "5.2": "OTI", "5.3": "OTI", "5.4": "OTI", "5.5": "UE",
+    "5.6": "UE", "5.7": "UE", "5.8": "UE", "5.9": "UE",
+    # D6: Seguridad y Privacidad de Datos (10 preguntas)
+    "6.1": "OAJ", "6.2": "OAJ", "6.3": "OAJ", "6.4": "OTI", "6.5": "OTI",
+    "6.6": "OTI", "6.7": "OTI", "6.8": "OAJ", "6.9": "OTI", "6.10": "OTI",
+    # D7: Ciclo de Vida de los Datos (8 preguntas)
+    "7.1": "OTI", "7.2": "OTI", "7.3": "OTI", "7.4": "OTI",
+    "7.5": "OAJ", "7.6": "OAJ", "7.7": "OAJ", "7.8": "OTI",
+    # D8: Infraestructura, Analítica y Datos Abiertos (9 preguntas)
+    "8.1": "OTI", "8.2": "OTI", "8.3": "OTI", "8.4": "OTI", "8.5": "OTI",
+    "8.6": "UE", "8.7": "UE", "8.8": "UE", "8.9": "UE"
+}
+
+DEFAULT_USERS = [
+    {
+        "username": "admin",
+        "password": "admin123",
+        "nombre_completo": "Administrador General del Sistema",
+        "siglas": "ADMIN",
+        "rol": "ADMINISTRADOR",
+        "area": "Comité de Gobierno y Transformación Digital / Administración"
+    },
+    {
+        "username": "oti",
+        "password": "oti123",
+        "nombre_completo": "Oficina de Tecnologías de la Información",
+        "siglas": "OTI",
+        "rol": "AREA_RESPONSABLE",
+        "area": "Oficina de Tecnologías de la Información (OTI)"
+    },
+    {
+        "username": "oaj",
+        "password": "oaj123",
+        "nombre_completo": "Oficina de Asesoría Jurídica",
+        "siglas": "OAJ",
+        "rol": "AREA_RESPONSABLE",
+        "area": "Oficina de Asesoría Jurídica (OAJ)"
+    },
+    {
+        "username": "upm",
+        "password": "upm123",
+        "nombre_completo": "Unidad de Planeamiento y Modernización",
+        "siglas": "UPM",
+        "rol": "AREA_RESPONSABLE",
+        "area": "Unidad de Planeamiento y Modernización (UPM)"
+    },
+    {
+        "username": "up",
+        "password": "up123",
+        "nombre_completo": "Unidad de Presupuesto",
+        "siglas": "UP",
+        "rol": "AREA_RESPONSABLE",
+        "area": "Unidad de Presupuesto (UP)"
+    },
+    {
+        "username": "ue",
+        "password": "ue123",
+        "nombre_completo": "Unidad de Estadística",
+        "siglas": "UE",
+        "rol": "AREA_RESPONSABLE",
+        "area": "Unidad de Estadística (UE)"
+    },
+    {
+        "username": "urh",
+        "password": "urh123",
+        "nombre_completo": "Unidad de Recursos Humanos",
+        "siglas": "URH",
+        "rol": "AREA_RESPONSABLE",
+        "area": "Unidad de Recursos Humanos (URH)"
+    }
+]
+
 # -------------------------------------------------------------
-# SEEDER AUTOMÁTICO INICIAL
+# SEEDER AUTOMÁTICO INICIAL (MEMGD v1.1)
 # -------------------------------------------------------------
 def seed_database():
     db = SessionLocal()
     try:
+        # 1. Crear usuarios por defecto si no existen
+        for u in DEFAULT_USERS:
+            exist = db.query(UserModel).filter(UserModel.username == u["username"]).first()
+            if not exist:
+                db.add(UserModel(**u))
+        db.commit()
+        first_q = db.query(PreguntaModel).filter(PreguntaModel.codigo == "1.1").first()
+        is_old = first_q and "Plan de Acción de Gobierno de Datos (PAGD)" not in (first_q.enunciado or "")
         q_count = db.query(PreguntaModel).count()
-        if q_count == 0 and os.path.exists(CATALOG_PATH):
+        if (q_count != 75 or is_old) and os.path.exists(CATALOG_PATH):
             with open(CATALOG_PATH, "r", encoding="utf-8") as f:
                 catalog = json.load(f)
+            db.query(OpcionModel).delete()
+            db.query(PreguntaModel).delete()
+            db.query(DimensionModel).delete()
             for d in catalog:
                 db.merge(DimensionModel(id=d["id"], codigo=d["code"], nombre=d["name"], orden=d["id"]))
                 for q in d["questions"]:
@@ -159,9 +281,12 @@ def seed_database():
                         id=q["id"],
                         dimension_codigo=d["code"],
                         codigo=q["code"],
+                        titulo=q.get("titulo", ""),
                         enunciado=q["enunciado"],
                         explicacion=q["explicacion"],
                         resultados_esperados=q["resultados_esperados"],
+                        admite_na=q.get("admite_na", "No"),
+                        area_responsable=DEFAULT_AREA_ASSIGNMENTS.get(q["code"], "OTI"),
                         orden=q["id"]
                     ))
                     for opt in q["options"]:
@@ -172,6 +297,13 @@ def seed_database():
                             descripcion=opt["descripcion"]
                         ))
             db.commit()
+
+        # Asegurar asignación inicial de área responsable a preguntas existentes
+        for q_code, q_area in DEFAULT_AREA_ASSIGNMENTS.items():
+            preg = db.query(PreguntaModel).filter(PreguntaModel.codigo == q_code).first()
+            if preg and (not preg.area_responsable or preg.area_responsable == "OTI" and q_area != "OTI"):
+                preg.area_responsable = q_area
+        db.commit()
 
         cfg_count = db.query(ConfigInstitucionalModel).count()
         if cfg_count == 0:
@@ -310,6 +442,35 @@ app.add_middleware(
 # -------------------------------------------------------------
 # MODELOS PYDANTIC
 # -------------------------------------------------------------
+class LoginIn(BaseModel):
+    username: str
+    password: str
+
+class UserCreateIn(BaseModel):
+    username: str
+    password: str
+    nombre_completo: str
+    siglas: str
+    rol: Optional[str] = "AREA_RESPONSABLE"
+    area: str
+    activo: Optional[int] = 1
+
+class UserUpdateIn(BaseModel):
+    username: Optional[str] = None
+    password: Optional[str] = None
+    nombre_completo: Optional[str] = None
+    siglas: Optional[str] = None
+    rol: Optional[str] = None
+    area: Optional[str] = None
+    activo: Optional[int] = None
+
+class AsignarAreaIn(BaseModel):
+    area_responsable: str
+
+class AsignacionMasivaIn(BaseModel):
+    codigos: List[str]
+    area_responsable: str
+
 class RespuestaIn(BaseModel):
     pregunta_codigo: str
     valor_nivel: float
@@ -358,7 +519,7 @@ class IniciativaIn(BaseModel):
     fecha_fin: str
 
 # -------------------------------------------------------------
-# ENDPOINTS REST
+# ENDPOINTS REST: AUTENTICACIÓN Y ROLES
 # -------------------------------------------------------------
 @app.get("/api/db-info")
 def db_info():
@@ -368,18 +529,213 @@ def db_info():
         "timestamp": datetime.now().isoformat()
     }
 
+@app.post("/api/auth/login")
+def login(data: LoginIn, db: Session = Depends(get_db)):
+    u_clean = data.username.strip().lower()
+    p_clean = data.password.strip()
+    user = db.query(UserModel).filter(
+        UserModel.username == u_clean,
+        UserModel.activo == 1
+    ).first()
+    if not user or user.password != p_clean:
+        raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
+    
+    return {
+        "success": True,
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "nombre_completo": user.nombre_completo,
+            "siglas": user.siglas,
+            "rol": user.rol,
+            "area": user.area
+        },
+        "token": f"token_{user.username}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    }
+
+@app.get("/api/auth/usuarios")
+def listar_usuarios(db: Session = Depends(get_db)):
+    users = db.query(UserModel).order_by(UserModel.id).all()
+    # Calcular cantidad de preguntas asignadas a cada área / usuario
+    counts = {}
+    for p in db.query(PreguntaModel.area_responsable).all():
+        area = p[0] or "OTI"
+        counts[area] = counts.get(area, 0) + 1
+
+    return [{
+        "id": u.id,
+        "username": u.username,
+        "nombre_completo": u.nombre_completo,
+        "siglas": u.siglas,
+        "rol": u.rol,
+        "area": u.area,
+        "activo": u.activo,
+        "total_preguntas": counts.get(u.siglas, 0)
+    } for u in users]
+
+@app.post("/api/auth/usuarios")
+def crear_usuario(data: UserCreateIn, db: Session = Depends(get_db)):
+    u_clean = data.username.strip().lower()
+    if not u_clean:
+        raise HTTPException(status_code=400, detail="El nombre de usuario es obligatorio")
+    existente = db.query(UserModel).filter(UserModel.username == u_clean).first()
+    if existente:
+        raise HTTPException(status_code=400, detail="El nombre de usuario ya está registrado")
+    
+    nuevo = UserModel(
+        username=u_clean,
+        password=data.password.strip(),
+        nombre_completo=data.nombre_completo.strip(),
+        siglas=data.siglas.strip().upper(),
+        rol=data.rol.strip() if data.rol else "AREA_RESPONSABLE",
+        area=data.area.strip(),
+        activo=1 if data.activo is None else data.activo
+    )
+    db.add(nuevo)
+    db.commit()
+    db.refresh(nuevo)
+    return {
+        "status": "ok",
+        "user": {
+            "id": nuevo.id,
+            "username": nuevo.username,
+            "nombre_completo": nuevo.nombre_completo,
+            "siglas": nuevo.siglas,
+            "rol": nuevo.rol,
+            "area": nuevo.area,
+            "activo": nuevo.activo,
+            "total_preguntas": 0
+        }
+    }
+
+@app.put("/api/auth/usuarios/{user_id}")
+def actualizar_usuario(user_id: int, data: UserUpdateIn, db: Session = Depends(get_db)):
+    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    if data.username:
+        u_clean = data.username.strip().lower()
+        if u_clean != user.username:
+            chk = db.query(UserModel).filter(UserModel.username == u_clean).first()
+            if chk:
+                raise HTTPException(status_code=400, detail="El nombre de usuario ya está en uso")
+            user.username = u_clean
+    if data.password:
+        p_clean = data.password.strip()
+        if p_clean:
+            user.password = p_clean
+    if data.nombre_completo is not None:
+        user.nombre_completo = data.nombre_completo.strip()
+    if data.siglas is not None:
+        user.siglas = data.siglas.strip().upper()
+    if data.rol is not None:
+        user.rol = data.rol.strip()
+    if data.area is not None:
+        user.area = data.area.strip()
+    if data.activo is not None:
+        user.activo = data.activo
+    
+    db.commit()
+    return {
+        "status": "ok",
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "nombre_completo": user.nombre_completo,
+            "siglas": user.siglas,
+            "rol": user.rol,
+            "area": user.area,
+            "activo": user.activo
+        }
+    }
+
+@app.delete("/api/auth/usuarios/{user_id}")
+def toggle_usuario_activo(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    if user.username == "admin":
+        raise HTTPException(status_code=400, detail="No se puede desactivar la cuenta principal de administrador")
+    
+    user.activo = 0 if user.activo == 1 else 1
+    db.commit()
+    return {"status": "ok", "id": user.id, "activo": user.activo}
+
+@app.put("/api/preguntas/{codigo}/asignar")
+def asignar_area_pregunta(codigo: str, data: AsignarAreaIn, db: Session = Depends(get_db)):
+    preg = db.query(PreguntaModel).filter(PreguntaModel.codigo == codigo).first()
+    if not preg:
+        raise HTTPException(status_code=404, detail="Pregunta no encontrada")
+    nueva_area = data.area_responsable.strip().upper()
+    valid_areas = ["ADMIN", "OTI", "OAJ", "UPM", "UP", "UE", "URH"]
+    if nueva_area not in valid_areas:
+        raise HTTPException(status_code=400, detail=f"Área inválida. Debe ser una de: {', '.join(valid_areas)}")
+    preg.area_responsable = nueva_area
+    db.commit()
+    return {"status": "ok", "codigo": codigo, "area_responsable": preg.area_responsable}
+
+@app.post("/api/preguntas/asignacion-masiva")
+def asignacion_masiva_preguntas(data: AsignacionMasivaIn, db: Session = Depends(get_db)):
+    nueva_area = data.area_responsable.strip().upper()
+    valid_areas = ["ADMIN", "OTI", "OAJ", "UPM", "UP", "UE", "URH"]
+    if nueva_area not in valid_areas:
+        raise HTTPException(status_code=400, detail=f"Área inválida. Debe ser una de: {', '.join(valid_areas)}")
+    
+    if not data.codigos:
+        raise HTTPException(status_code=400, detail="Debe especificar al menos un código de pregunta")
+    
+    actualizadas = db.query(PreguntaModel).filter(
+        PreguntaModel.codigo.in_(data.codigos)
+    ).update({PreguntaModel.area_responsable: nueva_area}, synchronize_session=False)
+    
+    db.commit()
+    return {
+        "status": "ok",
+        "area_responsable": nueva_area,
+        "total_actualizadas": actualizadas
+    }
+
+# -------------------------------------------------------------
+# ENDPOINTS REST: MODELO PCM CON FILTRADO ESTRICTO POR ÁREA
+# -------------------------------------------------------------
 @app.get("/api/dimensiones")
-def listar_dimensiones(db: Session = Depends(get_db)):
+def listar_dimensiones(area: Optional[str] = None, db: Session = Depends(get_db)):
     dims = db.query(DimensionModel).order_by(DimensionModel.orden).all()
     result = []
+    area_filter = area.strip().upper() if area and area.strip().upper() not in ["ALL", "ADMIN", "TODOS"] else None
+
     for d in dims:
-        pregs = db.query(PreguntaModel).filter(PreguntaModel.dimension_codigo == d.codigo).all()
+        q_query = db.query(PreguntaModel).filter(PreguntaModel.dimension_codigo == d.codigo)
+        if area_filter:
+            q_query = q_query.filter(PreguntaModel.area_responsable == area_filter)
+        pregs = q_query.all()
         total_p = len(pregs)
         preg_codes = [p.codigo for p in pregs]
         
-        resp_rows = db.query(RespuestaModel).filter(RespuestaModel.pregunta_codigo.in_(preg_codes)).all()
-        respondidas = len(resp_rows)
-        score = sum(r.valor_nivel for r in resp_rows) / respondidas if respondidas > 0 else 0.0
+        if total_p == 0:
+            result.append({
+                "id": d.id,
+                "codigo": d.codigo,
+                "nombre": d.nombre,
+                "total_preguntas": 0,
+                "respondidas": 0,
+                "puntaje": 0.0,
+                "brecha": 0.0
+            })
+            continue
+
+        resp_validas = db.query(RespuestaModel).filter(
+            RespuestaModel.pregunta_codigo.in_(preg_codes),
+            RespuestaModel.valor_nivel >= 0
+        ).all()
+        resp_todas = db.query(RespuestaModel).filter(
+            RespuestaModel.pregunta_codigo.in_(preg_codes)
+        ).all()
+        
+        respondidas = len(resp_todas)
+        validas_count = len(resp_validas)
+        score = sum(r.valor_nivel for r in resp_validas) / validas_count if validas_count > 0 else 0.0
         
         result.append({
             "id": d.id,
@@ -387,15 +743,18 @@ def listar_dimensiones(db: Session = Depends(get_db)):
             "nombre": d.nombre,
             "total_preguntas": total_p,
             "respondidas": respondidas,
-            "puntaje": round(score, 2)
+            "puntaje": round(score, 2),
+            "brecha": round(max(0.0, 3.0 - score), 2)
         })
     return result
 
 @app.get("/api/preguntas")
-def listar_preguntas(dim: Optional[str] = None, db: Session = Depends(get_db)):
+def listar_preguntas(dim: Optional[str] = None, area: Optional[str] = None, db: Session = Depends(get_db)):
     query = db.query(PreguntaModel)
     if dim:
         query = query.filter(PreguntaModel.dimension_codigo == dim)
+    if area and area.strip().upper() not in ["ALL", "ADMIN", "TODOS"]:
+        query = query.filter(PreguntaModel.area_responsable == area.strip().upper())
     pregs = query.order_by(PreguntaModel.id).all()
     
     result = []
@@ -408,9 +767,12 @@ def listar_preguntas(dim: Optional[str] = None, db: Session = Depends(get_db)):
             "id": p.id,
             "dimension_codigo": p.dimension_codigo,
             "codigo": p.codigo,
+            "titulo": p.titulo or "",
             "enunciado": p.enunciado,
             "explicacion": p.explicacion,
             "resultados_esperados": p.resultados_esperados,
+            "admite_na": p.admite_na or "No",
+            "area_responsable": p.area_responsable or "OTI",
             "opciones": [{
                 "id": o.id,
                 "nivel": o.nivel,
@@ -448,19 +810,52 @@ def guardar_respuesta(data: RespuestaIn, db: Session = Depends(get_db)):
     return {"status": "ok", "message": f"Respuesta guardada para {data.pregunta_codigo}"}
 
 @app.get("/api/estadisticas")
-def obtener_estadisticas(db: Session = Depends(get_db)):
+def obtener_estadisticas(area: Optional[str] = None, db: Session = Depends(get_db)):
     dims = db.query(DimensionModel).order_by(DimensionModel.orden).all()
     dim_scores = []
+    dim_evaluadas = 0
     sum_dim_scores = 0.0
+    total_preguntas_global = 0
+    total_respondidas_global = 0
+    area_filter = area.strip().upper() if area and area.strip().upper() not in ["ALL", "ADMIN", "TODOS"] else None
 
     for d in dims:
-        pregs = db.query(PreguntaModel).filter(PreguntaModel.dimension_codigo == d.codigo).all()
+        q_query = db.query(PreguntaModel).filter(PreguntaModel.dimension_codigo == d.codigo)
+        if area_filter:
+            q_query = q_query.filter(PreguntaModel.area_responsable == area_filter)
+        pregs = q_query.all()
         total_p = len(pregs)
+        total_preguntas_global += total_p
         preg_codes = [p.codigo for p in pregs]
-        resp_rows = db.query(RespuestaModel).filter(RespuestaModel.pregunta_codigo.in_(preg_codes)).all()
-        respondidas = len(resp_rows)
-        score = sum(r.valor_nivel for r in resp_rows) / respondidas if respondidas > 0 else 0.0
-        sum_dim_scores += score
+        
+        if total_p == 0:
+            dim_scores.append({
+                "codigo": d.codigo,
+                "nombre": d.nombre,
+                "total_preguntas": 0,
+                "respondidas": 0,
+                "puntaje": 0.0,
+                "brecha": 0.0
+            })
+            continue
+
+        resp_validas = db.query(RespuestaModel).filter(
+            RespuestaModel.pregunta_codigo.in_(preg_codes),
+            RespuestaModel.valor_nivel >= 0
+        ).all()
+        resp_todas = db.query(RespuestaModel).filter(
+            RespuestaModel.pregunta_codigo.in_(preg_codes)
+        ).all()
+        
+        respondidas = len(resp_todas)
+        total_respondidas_global += respondidas
+        validas_count = len(resp_validas)
+        if validas_count > 0:
+            score = sum(r.valor_nivel for r in resp_validas) / validas_count
+            dim_evaluadas += 1
+            sum_dim_scores += score
+        else:
+            score = 0.0
 
         dim_scores.append({
             "codigo": d.codigo,
@@ -471,45 +866,48 @@ def obtener_estadisticas(db: Session = Depends(get_db)):
             "brecha": round(max(0.0, 3.0 - score), 2)
         })
 
-    puntaje_final = round(sum_dim_scores / len(dims), 2) if len(dims) > 0 else 0.0
+    dims_con_preguntas = [d for d in dim_scores if d["total_preguntas"] > 0]
+    puntaje_final = round(sum_dim_scores / len(dims_con_preguntas), 2) if len(dims_con_preguntas) > 0 else 0.0
 
+    # Escala oficial MEMGD v1.1
     def nivel_verbal(val):
-        if val < 0.5: return "Nivel 0: No Iniciado"
-        if val < 1.5: return "Nivel 1: Inicial / Ad-hoc"
-        if val < 2.5: return "Nivel 2: En Progreso / Parcial"
-        if val < 3.5: return "Nivel 3: Definido / Implementado"
-        if val < 4.5: return "Nivel 4: Gestionado / Monitoreado"
-        return "Nivel 5: Optimizado / Integrado"
+        if val < 1.0: return "Nivel 0: No iniciado"
+        if val < 2.0: return "Nivel 1: Inicial"
+        if val < 3.0: return "Nivel 2: En desarrollo"
+        if val < 4.0: return "Nivel 3: Definido"
+        if val < 5.0: return "Nivel 4: Logrado"
+        return "Nivel 5: Optimizado"
 
-    total_preguntas = db.query(PreguntaModel).count()
-    total_respondidas = db.query(RespuestaModel).count()
-    total_evidencias = db.query(EvidenciaModel).count()
-    total_validadas = db.query(EvidenciaModel).filter(EvidenciaModel.estado_validacion == "Validado").count()
     cfg = db.query(ConfigInstitucionalModel).filter(ConfigInstitucionalModel.id == 1).first()
     nivel_obj = cfg.nivel_objetivo if cfg else 3.0
+    ev_total = db.query(EvidenciaModel).count()
+    ev_val = db.query(EvidenciaModel).filter(EvidenciaModel.estado_validacion == "Validado").count()
+    pct_avance = round((total_respondidas_global / total_preguntas_global) * 100, 1) if total_preguntas_global > 0 else 0.0
 
     return {
         "puntaje_final": puntaje_final,
         "nivel_descriptivo": nivel_verbal(puntaje_final),
         "nivel_objetivo": nivel_obj,
         "brecha_global": round(max(0.0, nivel_obj - puntaje_final), 2),
-        "total_preguntas": total_preguntas,
-        "total_respondidas": total_respondidas,
-        "porcentaje_avance": round((total_respondidas / total_preguntas) * 100, 1) if total_preguntas > 0 else 0,
-        "total_evidencias": total_evidencias,
-        "total_validadas": total_validadas,
+        "total_preguntas": total_preguntas_global,
+        "total_respondidas": total_respondidas_global,
+        "porcentaje_avance": pct_avance,
+        "total_evidencias": ev_total,
+        "total_validadas": ev_val,
         "dimensiones": dim_scores
     }
 
 @app.get("/api/evidencias")
-def listar_evidencias(pregunta_codigo: Optional[str] = None, estado: Optional[str] = None, db: Session = Depends(get_db)):
-    query = db.query(EvidenciaModel, PreguntaModel.enunciado, PreguntaModel.dimension_codigo)\
+def listar_evidencias(pregunta_codigo: Optional[str] = None, estado: Optional[str] = None, area: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(EvidenciaModel, PreguntaModel.enunciado, PreguntaModel.dimension_codigo, PreguntaModel.area_responsable)\
         .outerjoin(PreguntaModel, EvidenciaModel.pregunta_codigo == PreguntaModel.codigo)
     
     if pregunta_codigo:
         query = query.filter(EvidenciaModel.pregunta_codigo == pregunta_codigo)
     if estado:
         query = query.filter(EvidenciaModel.estado_validacion == estado)
+    if area and area.strip().upper() not in ["ALL", "ADMIN", "TODOS"]:
+        query = query.filter(PreguntaModel.area_responsable == area.strip().upper())
         
     rows = query.order_by(EvidenciaModel.id.desc()).all()
     res = []
@@ -690,26 +1088,23 @@ def exportar_matriz_excel(db: Session = Depends(get_db)):
     wb = openpyxl.load_workbook(src_file)
     ws_eval = wb["Matriz de Evaluación"]
     
-    row_mapping = {
-        '1.1': 3, '1.2': 4, '1.3': 5, '1.4': 6, '1.5': 7, '1.6': 8, '1.7': 9, '1.8': 10, '1.9': 11, '1.10': 12, '1.11': 13, '1.12': 14,
-        '2.1': 16, '2.2': 17, '2.3': 18, '2.4': 19, '2.5': 20,
-        '3.1': 22, '3.2': 23, '3.3': 24, '3.4': 25, '3.5': 26, '3.6': 27, '3.7': 28, '3.8': 29, '3.9': 30, '3.10': 31, '3.11': 32,
-        '4.1': 34, '4.2': 35, '4.3': 36, '4.4': 37, '4.5': 38, '4.6': 39, '4.7': 40, '4.8': 41, '4.9': 42, '4.10': 43, '4.11': 44, '4.12': 45,
-        '5.1': 47, '5.2': 48, '5.3': 49, '5.4': 50, '5.5': 51, '5.6': 52, '5.7': 53, '5.8': 54, '5.9': 55,
-        '6.1': 57, '6.2': 58, '6.3': 59, '6.4': 60, '6.5': 61, '6.6': 62, '6.7': 63, '6.8': 64, '6.9': 65,
-        '7.1': 67, '7.2': 68, '7.3': 69, '7.4': 70, '7.5': 71, '7.6': 72, '7.7': 73, '7.8': 74, '7.9': 75,
-        '8.1': 77, '8.2': 78, '8.3': 79, '8.4': 80, '8.5': 81, '8.6': 82, '8.7': 83, '8.8': 84
-    }
-    
+    row_mapping = {}
+    for r in range(2, ws_eval.max_row + 1):
+        c_code = ws_eval.cell(r, 2).value
+        if c_code:
+            row_mapping[str(c_code).strip()] = r
+            
     respuestas = db.query(RespuestaModel).all()
     for r in respuestas:
         if r.pregunta_codigo in row_mapping:
             t_row = row_mapping[r.pregunta_codigo]
-            ws_eval.cell(t_row, 3).value = r.opcion_texto
-            ws_eval.cell(t_row, 4).value = r.comentarios
+            if r.valor_nivel >= 0:
+                ws_eval.cell(t_row, 12).value = int(r.valor_nivel)
+            else:
+                ws_eval.cell(t_row, 12).value = "NA"
             
     wb.save(out_file)
-    return FileResponse(out_file, filename="Matriz_de_Evaluacion_Oficial_PCM.xlsx", media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    return FileResponse(out_file, filename="Anexo_2_MEMGD_Matriz_de_Evaluacion.xlsx", media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 @app.get("/api/exportar/evidencias-excel")
 def exportar_evidencias_excel(db: Session = Depends(get_db)):
@@ -761,7 +1156,7 @@ def exportar_evidencias_excel(db: Session = Depends(get_db)):
             sheet_rows[matched_sheet] = curr_r + 1
             
     wb.save(out_file)
-    return FileResponse(out_file, filename="Inventario_de_Evidencias_Oficial_PCM.xlsx", media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    return FileResponse(out_file, filename="Anexo_3_MEMGD_Inventario_de_Evidencias.xlsx", media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 @app.get("/api/exportar/plan-docx")
 def exportar_plan_docx(db: Session = Depends(get_db)):
@@ -813,7 +1208,10 @@ def exportar_plan_docx(db: Session = Depends(get_db)):
             if idx + 1 < len(t9.rows):
                 pregs = db.query(PreguntaModel).filter(PreguntaModel.dimension_codigo == d.codigo).all()
                 preg_codes = [p.codigo for p in pregs]
-                resp_rows = db.query(RespuestaModel).filter(RespuestaModel.pregunta_codigo.in_(preg_codes)).all()
+                resp_rows = db.query(RespuestaModel).filter(
+                    RespuestaModel.pregunta_codigo.in_(preg_codes),
+                    RespuestaModel.valor_nivel >= 0
+                ).all()
                 score = sum(r.valor_nivel for r in resp_rows) / len(resp_rows) if resp_rows else 0.0
                 t9.rows[idx+1].cells[2].text = f"{score:.2f}"
                 t9.rows[idx+1].cells[3].text = "3.00"

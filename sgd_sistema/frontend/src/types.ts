@@ -12,13 +12,36 @@ export interface Respuesta {
   actualizado_en?: string;
 }
 
+export interface UserSession {
+  id: number;
+  username: string;
+  nombre_completo: string;
+  siglas: string; // 'ADMIN' | 'OTI' | 'OAJ' | 'UPM' | 'UP' | 'UE' | 'URH'
+  rol: 'ADMINISTRADOR' | 'AREA_RESPONSABLE';
+  area: string;
+}
+
+export interface UsuarioItem {
+  id: number;
+  username: string;
+  nombre_completo: string;
+  siglas: string;
+  rol: 'ADMINISTRADOR' | 'AREA_RESPONSABLE';
+  area: string;
+  activo: number;
+  total_preguntas?: number;
+}
+
 export interface Pregunta {
   id: number;
   dimension_codigo: string;
   codigo: string;
+  titulo?: string;
   enunciado: string;
   explicacion: string;
   resultados_esperados: string;
+  admite_na?: string;
+  area_responsable?: string;
   opciones: OptionItem[];
   respuesta: Respuesta | null;
   total_evidencias: number;
