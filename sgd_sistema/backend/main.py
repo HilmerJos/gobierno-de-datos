@@ -1,16 +1,18 @@
 import os
 import json
 import shutil
+import hashlib
+import hmac
 from datetime import datetime
 from typing import Optional, List
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 import openpyxl
 import docx
-from sqlalchemy import create_engine, Column, Integer, String, Float, Text, Date, DateTime, text
+from sqlalchemy import create_engine, Column, Integer, String, Float, Text, Date, DateTime, text, ForeignKey, func
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -76,12 +78,81 @@ class UserModel(Base):
     __tablename__ = "usuarios"
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(50), unique=True, index=True)
-    password = Column(String(100))
+    password = Column(String(255))
     nombre_completo = Column(String(200))
     siglas = Column(String(20), index=True)
     rol = Column(String(50))
     area = Column(String(200))
     activo = Column(Integer, default=1)
+    debe_cambiar_password = Column(Integer, default=1)
+
+class HistorialPasswordModel(Base):
+    __tablename__ = "historial_passwords"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    usuario_id = Column(Integer, index=True)
+    username = Column(String(50), index=True)
+    password_hash = Column(String(255), nullable=False)
+    fecha_registro = Column(String(50))
+    motivo = Column(String(100), default="Cambio de contraseña")
+
+class LogAuditoriaModel(Base):
+    __tablename__ = "logs_auditoria"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    usuario_id = Column(Integer, nullable=True)
+    username = Column(String(50), index=True, default="sistema")
+    accion = Column(String(100), index=True)
+    modulo = Column(String(100), index=True)
+    detalle = Column(Text)
+    ip_origen = Column(String(50), nullable=True)
+    fecha_registro = Column(String(50))
+
+# -------------------------------------------------------------
+# SEGURIDAD CRIPTOGRÁFICA Y REGISTRO DE AUDITORÍA
+# -------------------------------------------------------------
+def hash_password(password: str, salt: bytes = None) -> str:
+    """Genera un hash criptográfico seguro PBKDF2-HMAC-SHA256 con salt aleatorio"""
+    if not password:
+        return ""
+    if salt is None:
+        salt = os.urandom(16)
+    pwd_hash = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, 100000)
+    return f"pbkdf2_sha256$100000${salt.hex()}${pwd_hash.hex()}"
+
+def verify_password(plain_password: str, stored_hash: str) -> bool:
+    """Verifica una contraseña en texto plano contra el hash almacenado"""
+    if not plain_password or not stored_hash:
+        return False
+    # Retrocompatibilidad segura si la BD contuviese texto plano
+    if not stored_hash.startswith("pbkdf2_sha256$"):
+        return hmac.compare_digest(plain_password, stored_hash)
+    try:
+        parts = stored_hash.split("$")
+        if len(parts) != 4:
+            return False
+        _, iterations_str, salt_hex, expected_hash_hex = parts
+        iterations = int(iterations_str)
+        salt = bytes.fromhex(salt_hex)
+        calculated = hashlib.pbkdf2_hmac('sha256', plain_password.encode('utf-8'), salt, iterations).hex()
+        return hmac.compare_digest(calculated, expected_hash_hex)
+    except Exception:
+        return False
+
+def registrar_log(db: Session, accion: str, modulo: str, detalle: str, username: str = "sistema", usuario_id: int = None, ip_origen: str = None):
+    """Inserta un registro de auditoría en la tabla logs_auditoria"""
+    try:
+        log_entry = LogAuditoriaModel(
+            usuario_id=usuario_id,
+            username=username,
+            accion=accion,
+            modulo=modulo,
+            detalle=detalle,
+            ip_origen=ip_origen,
+            fecha_registro=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        )
+        db.add(log_entry)
+        db.commit()
+    except Exception as e:
+        print(f"[Auditoría Warning] Error al registrar log: {e}")
 
 class OpcionModel(Base):
     __tablename__ = "opciones"
@@ -150,13 +221,30 @@ class IniciativaModel(Base):
 Base.metadata.create_all(bind=engine)
 
 def check_and_migrate_db():
-    with engine.connect() as conn:
-        try:
-            conn.execute(text("ALTER TABLE preguntas ADD COLUMN area_responsable VARCHAR(50) DEFAULT 'OTI'"))
-            conn.commit()
-            print("[Migration] Columna 'area_responsable' verificada/creada exitosamente.")
-        except Exception:
-            pass
+    try:
+        with engine.begin() as conn:
+            if DB_ENGINE_NAME == "postgresql":
+                conn.execute(text("ALTER TABLE preguntas ADD COLUMN IF NOT EXISTS titulo VARCHAR(255);"))
+                conn.execute(text("ALTER TABLE preguntas ADD COLUMN IF NOT EXISTS admite_na VARCHAR(255) DEFAULT 'No';"))
+                conn.execute(text("ALTER TABLE preguntas ADD COLUMN IF NOT EXISTS area_responsable VARCHAR(50) DEFAULT 'OTI';"))
+                conn.execute(text("ALTER TABLE usuarios ALTER COLUMN password TYPE VARCHAR(255);"))
+                conn.execute(text("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS debe_cambiar_password INTEGER DEFAULT 1;"))
+            else:
+                res = conn.execute(text("PRAGMA table_info(preguntas);")).fetchall()
+                existing_cols = [r[1] for r in res] if res else []
+                if "titulo" not in existing_cols:
+                    conn.execute(text("ALTER TABLE preguntas ADD COLUMN titulo VARCHAR(255);"))
+                if "admite_na" not in existing_cols:
+                    conn.execute(text("ALTER TABLE preguntas ADD COLUMN admite_na VARCHAR(255) DEFAULT 'No';"))
+                if "area_responsable" not in existing_cols:
+                    conn.execute(text("ALTER TABLE preguntas ADD COLUMN area_responsable VARCHAR(50) DEFAULT 'OTI';"))
+                res_u = conn.execute(text("PRAGMA table_info(usuarios);")).fetchall()
+                existing_u_cols = [r[1] for r in res_u] if res_u else []
+                if "debe_cambiar_password" not in existing_u_cols:
+                    conn.execute(text("ALTER TABLE usuarios ADD COLUMN debe_cambiar_password INTEGER DEFAULT 1;"))
+        print("[Migration] Columnas de preguntas, password y debe_cambiar_password verificadas exitosamente.")
+    except Exception as e:
+        print(f"[Migration Warning] Error verificando columnas: {e}")
 
 check_and_migrate_db()
 
@@ -259,11 +347,47 @@ DEFAULT_USERS = [
 def seed_database():
     db = SessionLocal()
     try:
-        # 1. Crear usuarios por defecto si no existen
+        # 1. Crear usuarios por defecto o migrar contraseñas a hashes criptográficos seguros
         for u in DEFAULT_USERS:
             exist = db.query(UserModel).filter(UserModel.username == u["username"]).first()
             if not exist:
-                db.add(UserModel(**u))
+                u_copy = dict(u)
+                u_copy["password"] = hash_password(u["password"])
+                new_u = UserModel(**u_copy)
+                db.add(new_u)
+                db.flush()
+                db.add(HistorialPasswordModel(
+                    usuario_id=new_u.id,
+                    username=new_u.username,
+                    password_hash=new_u.password,
+                    fecha_registro=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    motivo="Creación de usuario por defecto"
+                ))
+            elif exist and not exist.password.startswith("pbkdf2_sha256$"):
+                hashed = hash_password(exist.password)
+                exist.password = hashed
+                db.add(HistorialPasswordModel(
+                    usuario_id=exist.id,
+                    username=exist.username,
+                    password_hash=hashed,
+                    fecha_registro=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    motivo="Migración inicial a hash PBKDF2-SHA256"
+                ))
+        db.commit()
+
+        # Encriptar cualquier otra contraseña en texto plano en la BD
+        all_users = db.query(UserModel).all()
+        for u_row in all_users:
+            if u_row.password and not u_row.password.startswith("pbkdf2_sha256$"):
+                hashed = hash_password(u_row.password)
+                u_row.password = hashed
+                db.add(HistorialPasswordModel(
+                    usuario_id=u_row.id,
+                    username=u_row.username,
+                    password_hash=hashed,
+                    fecha_registro=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    motivo="Migración inicial de contraseña"
+                ))
         db.commit()
         first_q = db.query(PreguntaModel).filter(PreguntaModel.codigo == "1.1").first()
         is_old = first_q and "Plan de Acción de Gobierno de Datos (PAGD)" not in (first_q.enunciado or "")
@@ -446,6 +570,11 @@ class LoginIn(BaseModel):
     username: str
     password: str
 
+class PrimerIngresoPasswordIn(BaseModel):
+    username: str
+    current_password: str
+    new_password: str
+
 class UserCreateIn(BaseModel):
     username: str
     password: str
@@ -454,6 +583,7 @@ class UserCreateIn(BaseModel):
     rol: Optional[str] = "AREA_RESPONSABLE"
     area: str
     activo: Optional[int] = 1
+    debe_cambiar_password: Optional[int] = 1
 
 class UserUpdateIn(BaseModel):
     username: Optional[str] = None
@@ -463,6 +593,7 @@ class UserUpdateIn(BaseModel):
     rol: Optional[str] = None
     area: Optional[str] = None
     activo: Optional[int] = None
+    debe_cambiar_password: Optional[int] = None
 
 class AsignarAreaIn(BaseModel):
     area_responsable: str
@@ -530,25 +661,50 @@ def db_info():
     }
 
 @app.post("/api/auth/login")
-def login(data: LoginIn, db: Session = Depends(get_db)):
+def login(request: Request, data: LoginIn, db: Session = Depends(get_db)):
     u_clean = data.username.strip().lower()
     p_clean = data.password.strip()
     user = db.query(UserModel).filter(
         UserModel.username == u_clean,
         UserModel.activo == 1
     ).first()
-    if not user or user.password != p_clean:
+    
+    ip_client = request.client.host if request.client else "127.0.0.1"
+
+    if not user or not verify_password(p_clean, user.password):
+        registrar_log(
+            db,
+            accion="LOGIN_FALLIDO",
+            modulo="AUTENTICACION",
+            detalle=f"Intento fallido de inicio de sesión con usuario '{u_clean}'",
+            username=u_clean,
+            ip_origen=ip_client
+        )
         raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
     
+    registrar_log(
+        db,
+        accion="LOGIN_EXITOSO",
+        modulo="AUTENTICACION",
+        detalle=f"Inicio de sesión exitoso como '{user.username}' ({user.rol})",
+        username=user.username,
+        usuario_id=user.id,
+        ip_origen=ip_client
+    )
+
+    debe_cambiar = bool(user.debe_cambiar_password == 1) if user.debe_cambiar_password is not None else False
+
     return {
         "success": True,
+        "debe_cambiar_password": debe_cambiar,
         "user": {
             "id": user.id,
             "username": user.username,
             "nombre_completo": user.nombre_completo,
             "siglas": user.siglas,
             "rol": user.rol,
-            "area": user.area
+            "area": user.area,
+            "debe_cambiar_password": 1 if debe_cambiar else 0
         },
         "token": f"token_{user.username}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
     }
@@ -570,11 +726,12 @@ def listar_usuarios(db: Session = Depends(get_db)):
         "rol": u.rol,
         "area": u.area,
         "activo": u.activo,
+        "debe_cambiar_password": 1 if u.debe_cambiar_password == 1 else 0,
         "total_preguntas": counts.get(u.siglas, 0)
     } for u in users]
 
 @app.post("/api/auth/usuarios")
-def crear_usuario(data: UserCreateIn, db: Session = Depends(get_db)):
+def crear_usuario(request: Request, data: UserCreateIn, db: Session = Depends(get_db)):
     u_clean = data.username.strip().lower()
     if not u_clean:
         raise HTTPException(status_code=400, detail="El nombre de usuario es obligatorio")
@@ -582,9 +739,16 @@ def crear_usuario(data: UserCreateIn, db: Session = Depends(get_db)):
     if existente:
         raise HTTPException(status_code=400, detail="El nombre de usuario ya está registrado")
     
+    p_clean = data.password.strip()
+    if len(p_clean) < 4:
+        raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 4 caracteres")
+    
+    # Hash seguro de la contraseña
+    hashed_pwd = hash_password(p_clean)
+
     nuevo = UserModel(
         username=u_clean,
-        password=data.password.strip(),
+        password=hashed_pwd,
         nombre_completo=data.nombre_completo.strip(),
         siglas=data.siglas.strip().upper(),
         rol=data.rol.strip() if data.rol else "AREA_RESPONSABLE",
@@ -594,6 +758,28 @@ def crear_usuario(data: UserCreateIn, db: Session = Depends(get_db)):
     db.add(nuevo)
     db.commit()
     db.refresh(nuevo)
+
+    # Registrar en historial de contraseñas
+    db.add(HistorialPasswordModel(
+        usuario_id=nuevo.id,
+        username=nuevo.username,
+        password_hash=hashed_pwd,
+        fecha_registro=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        motivo="Creación de nuevo usuario"
+    ))
+    db.commit()
+
+    ip_client = request.client.host if request.client else "127.0.0.1"
+    registrar_log(
+        db,
+        accion="CREAR_USUARIO",
+        modulo="USUARIOS",
+        detalle=f"Usuario '{nuevo.username}' ({nuevo.siglas}) creado con rol {nuevo.rol}",
+        username=nuevo.username,
+        usuario_id=nuevo.id,
+        ip_origen=ip_client
+    )
+
     return {
         "status": "ok",
         "user": {
@@ -609,22 +795,65 @@ def crear_usuario(data: UserCreateIn, db: Session = Depends(get_db)):
     }
 
 @app.put("/api/auth/usuarios/{user_id}")
-def actualizar_usuario(user_id: int, data: UserUpdateIn, db: Session = Depends(get_db)):
+def actualizar_usuario(user_id: int, data: UserUpdateIn, request: Request, db: Session = Depends(get_db)):
     user = db.query(UserModel).filter(UserModel.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     
+    ip_client = request.client.host if request.client else "127.0.0.1"
+    cambios = []
+
     if data.username:
         u_clean = data.username.strip().lower()
         if u_clean != user.username:
             chk = db.query(UserModel).filter(UserModel.username == u_clean).first()
             if chk:
                 raise HTTPException(status_code=400, detail="El nombre de usuario ya está en uso")
+            cambios.append(f"username: {user.username} -> {u_clean}")
             user.username = u_clean
+
     if data.password:
         p_clean = data.password.strip()
         if p_clean:
-            user.password = p_clean
+            # 1. Validar contra el historial de contraseñas para evitar reutilización
+            historial = db.query(HistorialPasswordModel).filter(
+                HistorialPasswordModel.usuario_id == user.id
+            ).all()
+            for h in historial:
+                if verify_password(p_clean, h.password_hash):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Por políticas de seguridad, no se puede reutilizar una contraseña ya utilizada en el historial."
+                    )
+            # 2. Validar que no sea idéntica a la contraseña actual
+            if verify_password(p_clean, user.password):
+                raise HTTPException(
+                    status_code=400,
+                    detail="La nueva contraseña no puede ser idéntica a la contraseña actual."
+                )
+
+            # 3. Hashear y guardar
+            nuevo_hash = hash_password(p_clean)
+            user.password = nuevo_hash
+
+            db.add(HistorialPasswordModel(
+                usuario_id=user.id,
+                username=user.username,
+                password_hash=nuevo_hash,
+                fecha_registro=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                motivo="Actualización de contraseña por administrador"
+            ))
+            cambios.append("contraseña cambiada")
+            registrar_log(
+                db,
+                accion="CAMBIO_PASSWORD",
+                modulo="USUARIOS",
+                detalle=f"Contraseña actualizada para el usuario '{user.username}'",
+                username=user.username,
+                usuario_id=user.id,
+                ip_origen=ip_client
+            )
+
     if data.nombre_completo is not None:
         user.nombre_completo = data.nombre_completo.strip()
     if data.siglas is not None:
@@ -635,8 +864,24 @@ def actualizar_usuario(user_id: int, data: UserUpdateIn, db: Session = Depends(g
         user.area = data.area.strip()
     if data.activo is not None:
         user.activo = data.activo
-    
+
+    if data.debe_cambiar_password is not None:
+        user.debe_cambiar_password = data.debe_cambiar_password
+        cambios.append(f"debe_cambiar_password: {data.debe_cambiar_password}")
+
     db.commit()
+
+    if cambios:
+        registrar_log(
+            db,
+            accion="MODIFICAR_USUARIO",
+            modulo="USUARIOS",
+            detalle=f"Usuario '{user.username}' modificado ({', '.join(cambios)})",
+            username=user.username,
+            usuario_id=user.id,
+            ip_origen=ip_client
+        )
+
     return {
         "status": "ok",
         "user": {
@@ -646,12 +891,87 @@ def actualizar_usuario(user_id: int, data: UserUpdateIn, db: Session = Depends(g
             "siglas": user.siglas,
             "rol": user.rol,
             "area": user.area,
-            "activo": user.activo
+            "activo": user.activo,
+            "debe_cambiar_password": user.debe_cambiar_password or 0
         }
     }
 
+@app.post("/api/auth/cambiar-password-primer-ingreso")
+def cambiar_password_primer_ingreso(data: PrimerIngresoPasswordIn, request: Request, db: Session = Depends(get_db)):
+    """Permite al usuario cambiar su contraseña temporal por primera vez y desbloquear su cuenta"""
+    u_clean = data.username.strip().lower()
+    user = db.query(UserModel).filter(UserModel.username == u_clean, UserModel.activo == 1).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado o inactivo.")
+    
+    # 1. Validar contraseña actual
+    if not verify_password(data.current_password.strip(), user.password):
+        raise HTTPException(status_code=400, detail="La contraseña actual ingresada es incorrecta.")
+    
+    # 2. Validar longitud y complejidad básica
+    p_new = data.new_password.strip()
+    if len(p_new) < 6:
+        raise HTTPException(status_code=400, detail="La nueva contraseña debe tener como mínimo 6 caracteres.")
+    
+    # 3. Validar que no sea idéntica a la contraseña actual
+    if verify_password(p_new, user.password):
+        raise HTTPException(status_code=400, detail="La nueva contraseña no puede ser idéntica a su contraseña actual.")
+    
+    # 4. Validar contra el historial de contraseñas
+    historial = db.query(HistorialPasswordModel).filter(
+        HistorialPasswordModel.usuario_id == user.id
+    ).all()
+    for h in historial:
+        if verify_password(p_new, h.password_hash):
+            raise HTTPException(
+                status_code=400,
+                detail="Por políticas de seguridad, no se puede reutilizar una contraseña ya utilizada anteriormente."
+            )
+    
+    # 5. Hashear y actualizar
+    nuevo_hash = hash_password(p_new)
+    user.password = nuevo_hash
+    user.debe_cambiar_password = 0
+    
+    # 6. Registrar en historial
+    db.add(HistorialPasswordModel(
+        usuario_id=user.id,
+        username=user.username,
+        password_hash=nuevo_hash,
+        fecha_registro=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        motivo="Cambio obligatorio por primer ingreso"
+    ))
+    
+    ip_client = request.client.host if request.client else "127.0.0.1"
+    registrar_log(
+        db,
+        accion="CAMBIO_PASSWORD_PRIMER_INGRESO",
+        modulo="AUTENTICACION",
+        detalle=f"El usuario '{user.username}' actualizó su contraseña por primer ingreso satisfactoriamente.",
+        username=user.username,
+        usuario_id=user.id,
+        ip_origen=ip_client
+    )
+    
+    db.commit()
+    
+    return {
+        "success": True,
+        "message": "Contraseña actualizada exitosamente. Bienvenido al sistema.",
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "nombre_completo": user.nombre_completo,
+            "siglas": user.siglas,
+            "rol": user.rol,
+            "area": user.area,
+            "debe_cambiar_password": 0
+        },
+        "token": f"token_{user.username}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    }
+
 @app.delete("/api/auth/usuarios/{user_id}")
-def toggle_usuario_activo(user_id: int, db: Session = Depends(get_db)):
+def toggle_usuario_activo(user_id: int, request: Request, db: Session = Depends(get_db)):
     user = db.query(UserModel).filter(UserModel.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
@@ -660,7 +980,78 @@ def toggle_usuario_activo(user_id: int, db: Session = Depends(get_db)):
     
     user.activo = 0 if user.activo == 1 else 1
     db.commit()
+
+    ip_client = request.client.host if request.client else "127.0.0.1"
+    estado_str = "activado" if user.activo == 1 else "desactivado"
+    registrar_log(
+        db,
+        accion="ESTADO_USUARIO",
+        modulo="USUARIOS",
+        detalle=f"Usuario '{user.username}' fue {estado_str}",
+        username=user.username,
+        usuario_id=user.id,
+        ip_origen=ip_client
+    )
+
     return {"status": "ok", "id": user.id, "activo": user.activo}
+
+# -------------------------------------------------------------
+# ENDPOINTS REST: HISTORIAL DE CONTRASEÑAS Y AUDITORÍA
+# -------------------------------------------------------------
+@app.get("/api/logs")
+def listar_logs(
+    limit: int = 100,
+    offset: int = 0,
+    modulo: Optional[str] = None,
+    accion: Optional[str] = None,
+    username: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Consulta el historial de logs de auditoría del sistema"""
+    q = db.query(LogAuditoriaModel)
+    if modulo and modulo != "TODOS":
+        q = q.filter(LogAuditoriaModel.modulo == modulo)
+    if accion and accion != "TODAS":
+        q = q.filter(LogAuditoriaModel.accion == accion)
+    if username and username.strip():
+        q = q.filter(LogAuditoriaModel.username.ilike(f"%{username.strip()}%"))
+    
+    total = q.count()
+    items = q.order_by(LogAuditoriaModel.id.desc()).offset(offset).limit(limit).all()
+    
+    return {
+        "total": total,
+        "items": [{
+            "id": l.id,
+            "usuario_id": l.usuario_id,
+            "username": l.username,
+            "accion": l.accion,
+            "modulo": l.modulo,
+            "detalle": l.detalle,
+            "ip_origen": l.ip_origen,
+            "fecha_registro": l.fecha_registro
+        } for l in items]
+    }
+
+@app.get("/api/auth/historial-passwords")
+def listar_historial_passwords(
+    usuario_id: Optional[int] = None,
+    limit: int = 50,
+    db: Session = Depends(get_db)
+):
+    """Consulta el historial de contraseñas utilizadas (con hash protegido)"""
+    q = db.query(HistorialPasswordModel)
+    if usuario_id:
+        q = q.filter(HistorialPasswordModel.usuario_id == usuario_id)
+    items = q.order_by(HistorialPasswordModel.id.desc()).limit(limit).all()
+    return [{
+        "id": h.id,
+        "usuario_id": h.usuario_id,
+        "username": h.username,
+        "password_hash": (h.password_hash[:16] + "..." + h.password_hash[-8:]) if h.password_hash else "",
+        "fecha_registro": h.fecha_registro,
+        "motivo": h.motivo
+    } for h in items]
 
 @app.put("/api/preguntas/{codigo}/asignar")
 def asignar_area_pregunta(codigo: str, data: AsignarAreaIn, db: Session = Depends(get_db)):
@@ -673,6 +1064,7 @@ def asignar_area_pregunta(codigo: str, data: AsignarAreaIn, db: Session = Depend
         raise HTTPException(status_code=400, detail=f"Área inválida. Debe ser una de: {', '.join(valid_areas)}")
     preg.area_responsable = nueva_area
     db.commit()
+    registrar_log(db, "ASIGNAR_PREGUNTA", "MATRIZ", f"Pregunta {codigo} reasignada a {nueva_area}")
     return {"status": "ok", "codigo": codigo, "area_responsable": preg.area_responsable}
 
 @app.post("/api/preguntas/asignacion-masiva")
@@ -690,6 +1082,7 @@ def asignacion_masiva_preguntas(data: AsignacionMasivaIn, db: Session = Depends(
     ).update({PreguntaModel.area_responsable: nueva_area}, synchronize_session=False)
     
     db.commit()
+    registrar_log(db, "ASIGNACION_MASIVA", "MATRIZ", f"{actualizadas} preguntas reasignadas masivamente a {nueva_area}")
     return {
         "status": "ok",
         "area_responsable": nueva_area,
@@ -880,9 +1273,24 @@ def obtener_estadisticas(area: Optional[str] = None, db: Session = Depends(get_d
 
     cfg = db.query(ConfigInstitucionalModel).filter(ConfigInstitucionalModel.id == 1).first()
     nivel_obj = cfg.nivel_objetivo if cfg else 3.0
-    ev_total = db.query(EvidenciaModel).count()
-    ev_val = db.query(EvidenciaModel).filter(EvidenciaModel.estado_validacion == "Validado").count()
+
+    if area_filter:
+        ev_base = db.query(EvidenciaModel).join(
+            PreguntaModel, EvidenciaModel.pregunta_codigo == PreguntaModel.codigo
+        ).filter(func.upper(PreguntaModel.area_responsable) == area_filter)
+        ev_total = ev_base.count()
+        ev_val = ev_base.filter(EvidenciaModel.estado_validacion == "Validado").count()
+    else:
+        ev_total = db.query(EvidenciaModel).count()
+        ev_val = db.query(EvidenciaModel).filter(EvidenciaModel.estado_validacion == "Validado").count()
+
     pct_avance = round((total_respondidas_global / total_preguntas_global) * 100, 1) if total_preguntas_global > 0 else 0.0
+
+    # Conteo dinámico y en tiempo real de preguntas asignadas por área en el sistema
+    counts_areas = {}
+    for p in db.query(PreguntaModel.area_responsable).all():
+        a = (p[0] or "OTI").strip().upper()
+        counts_areas[a] = counts_areas.get(a, 0) + 1
 
     return {
         "puntaje_final": puntaje_final,
@@ -894,7 +1302,9 @@ def obtener_estadisticas(area: Optional[str] = None, db: Session = Depends(get_d
         "porcentaje_avance": pct_avance,
         "total_evidencias": ev_total,
         "total_validadas": ev_val,
-        "dimensiones": dim_scores
+        "dimensiones": dim_scores,
+        "distribucion_areas": counts_areas,
+        "total_preguntas_sistema": sum(counts_areas.values())
     }
 
 @app.get("/api/evidencias")
@@ -907,16 +1317,17 @@ def listar_evidencias(pregunta_codigo: Optional[str] = None, estado: Optional[st
     if estado:
         query = query.filter(EvidenciaModel.estado_validacion == estado)
     if area and area.strip().upper() not in ["ALL", "ADMIN", "TODOS"]:
-        query = query.filter(PreguntaModel.area_responsable == area.strip().upper())
+        query = query.filter(func.upper(PreguntaModel.area_responsable) == area.strip().upper())
         
     rows = query.order_by(EvidenciaModel.id.desc()).all()
     res = []
-    for ev, preg_enunciado, dim_codigo in rows:
+    for ev, preg_enunciado, dim_codigo, area_resp in rows:
         res.append({
             "id": ev.id,
             "pregunta_codigo": ev.pregunta_codigo,
             "pregunta_enunciado": preg_enunciado,
             "dimension_codigo": dim_codigo,
+            "area_responsable": area_resp,
             "origen": ev.origen,
             "tipo_evidencia": ev.tipo_evidencia,
             "nombre_evidencia": ev.nombre_evidencia,

@@ -19,6 +19,7 @@ export interface UserSession {
   siglas: string; // 'ADMIN' | 'OTI' | 'OAJ' | 'UPM' | 'UP' | 'UE' | 'URH'
   rol: 'ADMINISTRADOR' | 'AREA_RESPONSABLE';
   area: string;
+  debe_cambiar_password?: number;
 }
 
 export interface UsuarioItem {
@@ -30,6 +31,7 @@ export interface UsuarioItem {
   area: string;
   activo: number;
   total_preguntas?: number;
+  debe_cambiar_password?: number;
 }
 
 export interface Pregunta {
@@ -75,6 +77,8 @@ export interface Stats {
     puntaje: number;
     brecha: number;
   }[];
+  distribucion_areas?: Record<string, number>;
+  total_preguntas_sistema?: number;
 }
 
 export interface Evidencia {

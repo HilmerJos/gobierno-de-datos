@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Stats,
   Dimension,
@@ -14,6 +14,7 @@ import { QuestionNavigator, DimensionSummaryCard } from './components/QuestionNa
 import { RadarChart } from './components/RadarChart';
 import { BrechasChart } from './components/BrechasChart';
 import { EvidenciasModal } from './components/EvidenciasModal';
+import { ConfirmModal } from './components/ConfirmModal';
 import { LoginScreen } from './components/LoginScreen';
 import { AdminUsersModule } from './components/AdminUsersModule';
 import { ToastContainer, toast } from 'react-toastify';
@@ -130,6 +131,47 @@ export const App: React.FC = () => {
   // Modales
   const [isEvidenciaModalOpen, setIsEvidenciaModalOpen] = useState<boolean>(false);
   const [preselectedPreguntaCodigo, setPreselectedPreguntaCodigo] = useState<string>('');
+
+  // Modal de Confirmación personalizado (reemplaza confirm() nativo del navegador)
+  const [confirmModalConfig, setConfirmModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: React.ReactNode;
+    confirmText?: string;
+    cancelText?: string;
+    variant?: 'danger' | 'warning' | 'primary';
+    onConfirm: () => void | Promise<void>;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
+
+  const abrirConfirmacion = (config: {
+    title: string;
+    message: React.ReactNode;
+    confirmText?: string;
+    cancelText?: string;
+    variant?: 'danger' | 'warning' | 'primary';
+    onConfirm: () => void | Promise<void>;
+  }) => {
+    setConfirmModalConfig({
+      isOpen: true,
+      title: config.title,
+      message: config.message,
+      confirmText: config.confirmText || 'Eliminar',
+      cancelText: config.cancelText || 'Cancelar',
+      variant: config.variant || 'danger',
+      onConfirm: async () => {
+        try {
+          await config.onConfirm();
+        } finally {
+          setConfirmModalConfig(prev => ({ ...prev, isOpen: false }));
+        }
+      }
+    });
+  };
 
   useEffect(() => {
     if (isDark) {
@@ -282,15 +324,22 @@ export const App: React.FC = () => {
         method: 'POST',
         body: formData
       });
+      if (!resUpload.ok) {
+        throw new Error("Error al subir el archivo adjunto al servidor.");
+      }
       const uploadData = await resUpload.json();
       if (uploadData.url) finalRuta = uploadData.url;
     }
 
-    await fetch('/api/evidencias', {
+    const resSave = await fetch('/api/evidencias', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...data, ruta_o_enlace: finalRuta })
     });
+    if (!resSave.ok) {
+      const err = await resSave.json().catch(() => ({}));
+      throw new Error(err.detail || "Error al guardar evidencia en la base de datos.");
+    }
 
     const area = getActiveAreaParam();
     const query = area ? `?area=${area}` : '';
@@ -300,28 +349,44 @@ export const App: React.FC = () => {
     ]);
     setEvidencias(resEvs);
     setStats(resStats);
-    if (activeTab === 'matriz') loadPreguntas(currentDimension);
+    await loadPreguntas(currentDimension);
   };
 
-  const handleEliminarEvidencia = async (id: number) => {
-    if (!confirm("¿Está seguro de eliminar esta evidencia?")) return;
-    try {
-      const res = await fetch(`/api/evidencias/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error("Error al eliminar evidencia");
-      const area = getActiveAreaParam();
-      const query = area ? `?area=${area}` : '';
-      const [resEvs, resStats] = await Promise.all([
-        fetch(`/api/evidencias${query}`).then(r => r.json()),
-        fetch(`/api/estadisticas${query}`).then(r => r.json())
-      ]);
-      setEvidencias(resEvs);
-      setStats(resStats);
-      if (activeTab === 'matriz') loadPreguntas(currentDimension);
-      toast.info("Evidencia eliminada correctamente.");
-    } catch (err) {
-      console.error(err);
-      toast.error("Error al eliminar la evidencia seleccionada.");
-    }
+  const handleEliminarEvidencia = (ev: Evidencia) => {
+    abrirConfirmacion({
+      title: 'Eliminar evidencia',
+      message: (
+        <span>
+          ¿Está seguro de eliminar la evidencia{' '}
+          <strong className="text-slate-900 dark:text-white font-extrabold">
+            {ev.nombre_evidencia}
+          </strong>{' '}
+          vinculada a la pregunta <strong className="font-mono text-sky-600 dark:text-sky-400">[{ev.pregunta_codigo}]</strong>? Esta acción no se puede deshacer.
+        </span>
+      ),
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/evidencias/${ev.id}`, { method: 'DELETE' });
+          if (!res.ok) throw new Error("Error al eliminar evidencia");
+          const area = getActiveAreaParam();
+          const query = area ? `?area=${area}` : '';
+          const [resEvs, resStats] = await Promise.all([
+            fetch(`/api/evidencias${query}`).then(r => r.json()),
+            fetch(`/api/estadisticas${query}`).then(r => r.json())
+          ]);
+          setEvidencias(resEvs);
+          setStats(resStats);
+          await loadPreguntas(currentDimension);
+          toast.info("Evidencia eliminada correctamente.");
+        } catch (err) {
+          console.error(err);
+          toast.error("Error al eliminar la evidencia seleccionada.");
+        }
+      }
+    });
   };
 
   const handleValidarEvidencia = async (ev: Evidencia, nuevoEstado: string) => {
@@ -340,6 +405,7 @@ export const App: React.FC = () => {
       ]);
       setEvidencias(resEvs);
       setStats(resStats);
+      await loadPreguntas(currentDimension);
       toast.success(`Evidencia actualizada a estado: ${nuevoEstado}`);
     } catch (err) {
       console.error(err);
@@ -369,16 +435,41 @@ export const App: React.FC = () => {
     sublabel: `${d.total_preguntas} preguntas • Puntaje: ${d.puntaje.toFixed(2)} pts`
   }));
 
-  // Opciones para CustomSelect de Filtro de Área (Estilo Imagen 2)
-  const areaFiltroOptions: SelectOption[] = [
-    { value: 'ALL', label: 'Todas las Áreas (75)', sublabel: 'Evaluación institucional consolidada' },
-    { value: 'OTI', label: 'OTI - Tecnologías (43)', sublabel: 'Oficina de Tecnologías de la Información' },
-    { value: 'OAJ', label: 'OAJ - Asesoría Jurídica (11)', sublabel: 'Oficina de Asesoría Jurídica' },
-    { value: 'UPM', label: 'UPM - Planeamiento (5)', sublabel: 'Unidad de Planeamiento y Modernización' },
-    { value: 'UP', label: 'UP - Presupuesto (3)', sublabel: 'Unidad de Presupuesto' },
-    { value: 'UE', label: 'UE - Estadística (8)', sublabel: 'Unidad de Estadística' },
-    { value: 'URH', label: 'URH - Rec. Humanos (5)', sublabel: 'Unidad de Recursos Humanos' },
-  ];
+  // Configuración de metadatos de áreas evaluadoras
+  const METADATOS_AREAS: Record<string, { label: string; sublabel: string }> = {
+    OTI: { label: 'OTI - TECNOLOGÍAS', sublabel: 'Oficina de Tecnologías de la Información' },
+    OAJ: { label: 'OAJ - ASESORÍA JURÍDICA', sublabel: 'Oficina de Asesoría Jurídica' },
+    UPM: { label: 'UPM - PLANEAMIENTO', sublabel: 'Unidad de Planeamiento y Modernización' },
+    UP: { label: 'UP - PRESUPUESTO', sublabel: 'Unidad de Presupuesto' },
+    UE: { label: 'UE - ESTADÍSTICA', sublabel: 'Unidad de Estadística' },
+    URH: { label: 'URH - REC. HUMANOS', sublabel: 'Unidad de Recursos Humanos' },
+  };
+
+  // Opciones para CustomSelect de Filtro de Área calculadas dinámicamente según la BD en tiempo real
+  const areaFiltroOptions: SelectOption[] = useMemo(() => {
+    const dist = stats?.distribucion_areas || {};
+    const totalSistema = stats?.total_preguntas_sistema || (
+      Object.keys(dist).length > 0
+        ? Object.values(dist).reduce((a, b) => a + b, 0)
+        : 75
+    );
+
+    return [
+      {
+        value: 'ALL',
+        label: `TODAS LAS ÁREAS (${totalSistema})`,
+        sublabel: 'Evaluación institucional consolidada'
+      },
+      ...Object.entries(METADATOS_AREAS).map(([siglas, info]) => {
+        const count = dist[siglas] !== undefined ? dist[siglas] : 0;
+        return {
+          value: siglas,
+          label: `${info.label} (${count})`,
+          sublabel: info.sublabel
+        };
+      })
+    ];
+  }, [stats]);
 
   // Opciones para filtros de evidencias (Estilo Imagen 3)
   const filtroDimOptions: SelectOption[] = [
@@ -517,7 +608,7 @@ export const App: React.FC = () => {
           {[
             { id: 'dashboard', label: 'Dashboard Ejecutivo', icon: LayoutDashboard },
             { id: 'matriz', label: 'Matriz de Diagnóstico', icon: CheckSquare, badge: stats ? `${stats.total_respondidas}/${stats.total_preguntas}` : '0/75' },
-            { id: 'evidencias', label: 'Inventario Evidencias', icon: FolderGit2, badge: stats ? `${stats.total_evidencias}` : '0' },
+            { id: 'evidencias', label: 'Inventario Evidencias', icon: FolderGit2, badge: `${stats ? stats.total_evidencias : evidencias.length}` },
             { id: 'plan', label: 'Plan de Acción', icon: Target, badge: iniciativas.length.toString() },
             { id: 'exportar', label: 'Exportación Oficial', icon: DownloadCloud },
             ...(currentUser?.rol === 'ADMINISTRADOR' ? [
@@ -676,7 +767,7 @@ export const App: React.FC = () => {
               {[
                 { id: 'dashboard', label: 'Dashboard Ejecutivo', icon: LayoutDashboard },
                 { id: 'matriz', label: 'Matriz de Diagnóstico', icon: CheckSquare, badge: stats ? `${stats.total_respondidas}/${stats.total_preguntas}` : '0/75' },
-                { id: 'evidencias', label: 'Inventario Evidencias', icon: FolderGit2, badge: stats ? `${stats.total_evidencias}` : '0' },
+                { id: 'evidencias', label: 'Inventario Evidencias', icon: FolderGit2, badge: `${stats ? stats.total_evidencias : evidencias.length}` },
                 { id: 'plan', label: 'Plan de Acción', icon: Target, badge: iniciativas.length.toString() },
                 { id: 'exportar', label: 'Exportación Oficial', icon: DownloadCloud },
                 ...(currentUser?.rol === 'ADMINISTRADOR' ? [
@@ -1244,9 +1335,9 @@ export const App: React.FC = () => {
                               <CheckCircle2 className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => handleEliminarEvidencia(ev.id)}
+                              onClick={() => handleEliminarEvidencia(ev)}
                               title="Eliminar"
-                              className="p-1.5 rounded-2xl bg-rose-50 text-rose-600 border border-rose-200"
+                              className="p-1.5 rounded-2xl bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-400 dark:border-rose-900/60 cursor-pointer"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -1325,9 +1416,9 @@ export const App: React.FC = () => {
                                   <CheckCircle2 className="w-4 h-4" />
                                 </button>
                                 <button
-                                  onClick={() => handleEliminarEvidencia(ev.id)}
+                                  onClick={() => handleEliminarEvidencia(ev)}
                                   title="Eliminar"
-                                  className="p-1.5 rounded-2xl text-rose-600 hover:bg-rose-50"
+                                  className="p-1.5 rounded-2xl text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
@@ -1660,7 +1751,20 @@ export const App: React.FC = () => {
         onClose={() => setIsEvidenciaModalOpen(false)}
         preguntas={preguntas}
         initialCodigo={preselectedPreguntaCodigo}
+        selectedPregunta={preguntas.find(q => q.codigo === preselectedPreguntaCodigo) || preguntas.find(q => q.codigo === activePreguntaCodigo) || preguntas[0]}
         onSaveEvidencia={handleSaveEvidencia}
+      />
+
+      {/* MODAL DE CONFIRMACIÓN MODERNO (REEMPLAZA confirm() DEL NAVEGADOR) */}
+      <ConfirmModal
+        isOpen={confirmModalConfig.isOpen}
+        onClose={() => setConfirmModalConfig(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModalConfig.onConfirm}
+        title={confirmModalConfig.title}
+        message={confirmModalConfig.message}
+        confirmText={confirmModalConfig.confirmText}
+        cancelText={confirmModalConfig.cancelText}
+        variant={confirmModalConfig.variant}
       />
 
       {/* CONTENEDOR GLOBAL REACT-TOASTIFY */}

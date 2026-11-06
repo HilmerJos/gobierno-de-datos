@@ -34,17 +34,37 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql+psycopg2://postgres:postgrespassword@db:5432/sgd_madurez
+      WATCHFILES_FORCE_POLLING: "true"
     ports:
+      - "8000:8000"
       - "8001:8000"
-    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/app/sgd_sistema/backend"]
     volumes:
       - sgd_uploads_data:/app/sgd_sistema/uploads
       - ./sgd_sistema/frontend/dist:/app/sgd_sistema/frontend/dist
       - ./sgd_sistema/backend:/app/sgd_sistema/backend
       - ./sgd_sistema/static:/app/sgd_sistema/static
 
+  # -------------------------------------------------------------
+  # 3. Compilador en Caliente Frontend (Vite Watcher Automático)
+  # -------------------------------------------------------------
+  frontend:
+    build:
+      context: ./sgd_sistema/frontend
+      dockerfile: Dockerfile
+    container_name: sgd_frontend_watch
+    restart: unless-stopped
+    volumes:
+      - ./sgd_sistema/frontend/src:/app/src
+      - ./sgd_sistema/frontend/public:/app/public
+      - ./sgd_sistema/frontend/index.html:/app/index.html
+      - ./sgd_sistema/frontend/vite.config.ts:/app/vite.config.ts
+      - ./sgd_sistema/frontend/dist:/app/dist
+    command: ["npx", "vite", "build", "--watch"]
+
 volumes:
   sgd_postgres_data:
     driver: local
   sgd_uploads_data:
     driver: local
+

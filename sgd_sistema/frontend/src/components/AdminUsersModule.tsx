@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { UsuarioItem, Pregunta, Dimension } from '../types';
 import { toast } from 'react-toastify';
+import { ConfirmModal } from './ConfirmModal';
 import {
   Users,
   UserPlus,
@@ -20,7 +21,10 @@ import {
   Save,
   X,
   FileCheck2,
-  AlertCircle
+  AlertCircle,
+  History,
+  Clock,
+  ShieldCheck
 } from 'lucide-react';
 import { CustomSelect, SelectOption } from './CustomSelect';
 
@@ -54,13 +58,39 @@ const ROL_SELECT_OPTIONS: SelectOption[] = [
 ];
 
 export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({ onRefreshAllData }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'usuarios' | 'asignaciones'>('usuarios');
+  const [activeSubTab, setActiveSubTab] = useState<'usuarios' | 'asignaciones' | 'logs'>('usuarios');
 
   // Estados de datos
   const [usuarios, setUsuarios] = useState<UsuarioItem[]>([]);
   const [preguntas, setPreguntas] = useState<Pregunta[]>([]);
   const [dimensiones, setDimensiones] = useState<Dimension[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+
+  // Estados para Auditoría y Logs
+  const [logs, setLogs] = useState<any[]>([]);
+  const [logsTotal, setLogsTotal] = useState<number>(0);
+  const [logsLoading, setLogsLoading] = useState<boolean>(false);
+  const [logFilterModulo, setLogFilterModulo] = useState<string>('TODOS');
+  const [logFilterUser, setLogFilterUser] = useState<string>('');
+  const [historialPasswords, setHistorialPasswords] = useState<any[]>([]);
+  const [isHistorialModalOpen, setIsHistorialModalOpen] = useState<boolean>(false);
+  const [historialUserTitle, setHistorialUserTitle] = useState<string>('');
+
+  // Modal de confirmación personalizado (reemplaza confirm() nativo)
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: React.ReactNode;
+    confirmText?: string;
+    cancelText?: string;
+    variant?: 'danger' | 'warning' | 'primary';
+    onConfirm: () => void | Promise<void>;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
 
   // Filtros de asignaciones
   const [filtroDim, setFiltroDim] = useState<string>('TODAS');
@@ -69,6 +99,24 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({ onRefreshAll
   const [selectedCodigos, setSelectedCodigos] = useState<string[]>([]);
   const [masivoTargetArea, setMasivoTargetArea] = useState<string>('OTI');
   const [isApplyingMasivo, setIsApplyingMasivo] = useState<boolean>(false);
+
+  // Resumen de distribución de preguntas por área
+  const areaDistribution = useMemo(() => {
+    const counts: Record<string, number> = {
+      OTI: 0,
+      OAJ: 0,
+      UPM: 0,
+      UP: 0,
+      UE: 0,
+      URH: 0,
+      ADMIN: 0
+    };
+    preguntas.forEach(p => {
+      const a = (p.area_responsable || 'OTI').toUpperCase();
+      counts[a] = (counts[a] || 0) + 1;
+    });
+    return counts;
+  }, [preguntas]);
 
   // Opciones formateadas estilo Imagen 2 para los filtros
   const filtroDimOptions: SelectOption[] = useMemo(() => [
@@ -81,9 +129,12 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({ onRefreshAll
   ], [dimensiones]);
 
   const filtroAreaOptions: SelectOption[] = useMemo(() => [
-    { value: 'TODAS', label: 'Todas las Áreas Responsables', subtitle: 'Sin filtrar por área' },
-    ...AREA_SELECT_OPTIONS
-  ], []);
+    { value: 'TODAS', label: `Todas las Áreas (${preguntas.length})`, subtitle: 'Sin filtrar por área' },
+    ...AREA_SELECT_OPTIONS.map(opt => ({
+      ...opt,
+      label: `${opt.label} (${areaDistribution[opt.value] || 0})`
+    }))
+  ], [preguntas, areaDistribution]);
 
   // Modales de Usuarios
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
@@ -126,23 +177,48 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({ onRefreshAll
     }
   };
 
-  // Resumen de distribución de preguntas por área
-  const areaDistribution = useMemo(() => {
-    const counts: Record<string, number> = {
-      OTI: 0,
-      OAJ: 0,
-      UPM: 0,
-      UP: 0,
-      UE: 0,
-      URH: 0,
-      ADMIN: 0
-    };
-    preguntas.forEach(p => {
-      const a = (p.area_responsable || 'OTI').toUpperCase();
-      counts[a] = (counts[a] || 0) + 1;
-    });
-    return counts;
-  }, [preguntas]);
+  const loadLogs = async () => {
+    setLogsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (logFilterModulo !== 'TODOS') params.append('modulo', logFilterModulo);
+      if (logFilterUser.trim()) params.append('username', logFilterUser.trim());
+      params.append('limit', '100');
+      const res = await fetch(`/api/logs?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setLogs(data.items || []);
+        setLogsTotal(data.total || 0);
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error('Error al cargar logs de auditoría');
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+
+  const loadHistorialPasswords = async (userId?: number, username?: string) => {
+    try {
+      const url = userId ? `/api/auth/historial-passwords?usuario_id=${userId}` : '/api/auth/historial-passwords';
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        setHistorialPasswords(data || []);
+        setHistorialUserTitle(username ? `Usuario: @${username}` : 'Todos los usuarios');
+        setIsHistorialModalOpen(true);
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error('Error al cargar historial de contraseñas');
+    }
+  };
+
+  useEffect(() => {
+    if (activeSubTab === 'logs') {
+      loadLogs();
+    }
+  }, [activeSubTab, logFilterModulo]);
 
   // Preguntas filtradas para la tabla de asignaciones
   const filteredPreguntas = useMemo(() => {
@@ -315,7 +391,10 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({ onRefreshAll
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: newPassword })
       });
-      if (!res.ok) throw new Error('Error al actualizar contraseña');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Error al actualizar contraseña');
+      }
       toast.success(`Contraseña de @${selectedUser.username} cambiada correctamente`);
       setIsPasswordModalOpen(false);
       setNewPassword('');
@@ -326,23 +405,46 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({ onRefreshAll
     }
   };
 
-  // Manejador: Activar/Desactivar
-  const handleToggleActivo = async (user: UsuarioItem) => {
+  // Manejador: Activar/Desactivar con modal de confirmación
+  const handleToggleActivo = (user: UsuarioItem) => {
     if (user.username === 'admin') {
       toast.info('No es posible desactivar la cuenta del Administrador principal');
       return;
     }
 
-    try {
-      const res = await fetch(`/api/auth/usuarios/${user.id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Error al cambiar estado del usuario');
-      const data = await res.json();
-      toast.info(data.activo === 1 ? `Usuario @${user.username} reactivado` : `Usuario @${user.username} desactivado`);
-      await loadData();
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || 'Error al actualizar estado');
-    }
+    const isDeactivating = user.activo === 1;
+
+    setConfirmConfig({
+      isOpen: true,
+      title: isDeactivating ? 'Desactivar usuario' : 'Reactivar usuario',
+      message: (
+        <span>
+          ¿Está seguro de {isDeactivating ? 'desactivar' : 'reactivar'} al usuario{' '}
+          <strong className="text-slate-900 dark:text-white font-mono font-bold">
+            @{user.username}
+          </strong>{' '}
+          ({user.nombre_completo})?{' '}
+          {isDeactivating ? 'El usuario perderá el acceso al sistema hasta que sea habilitado nuevamente.' : 'El usuario podrá volver a iniciar sesión.'}
+        </span>
+      ),
+      confirmText: isDeactivating ? 'Desactivar' : 'Reactivar',
+      cancelText: 'Cancelar',
+      variant: isDeactivating ? 'danger' : 'primary',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/auth/usuarios/${user.id}`, { method: 'DELETE' });
+          if (!res.ok) throw new Error('Error al cambiar estado del usuario');
+          const data = await res.json();
+          toast.info(data.activo === 1 ? `Usuario @${user.username} reactivado` : `Usuario @${user.username} desactivado`);
+          await loadData();
+        } catch (err: any) {
+          console.error(err);
+          toast.error(err.message || 'Error al actualizar estado');
+        } finally {
+          setConfirmConfig(prev => ({ ...prev, isOpen: false }));
+        }
+      }
+    });
   };
 
   const openEditModal = (user: UsuarioItem) => {
@@ -438,6 +540,16 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({ onRefreshAll
           >
             <ArrowRightLeft className="w-4 h-4" />
             <span>Matriz de Asignación de Preguntas (75)</span>
+          </button>
+          <button
+            onClick={() => setActiveSubTab('logs')}
+            className={`px-4 py-2 rounded-2xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ${activeSubTab === 'logs'
+                ? 'bg-white text-slate-900 shadow-md font-black'
+                : 'text-slate-300 hover:bg-white/10 hover:text-white'
+              }`}
+          >
+            <History className="w-4 h-4" />
+            <span>Historial y Auditoría de Logs</span>
           </button>
         </div>
       </div>
@@ -595,6 +707,13 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({ onRefreshAll
                       <td className="py-3.5 px-4 text-right">
                         <div className="inline-flex items-center gap-1.5">
                           <button
+                            onClick={() => loadHistorialPasswords(u.id, u.username)}
+                            title="Ver historial de contraseñas usadas"
+                            className="p-1.5 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors cursor-pointer"
+                          >
+                            <History className="w-4 h-4" />
+                          </button>
+                          <button
                             onClick={() => openPasswordModal(u)}
                             title="Cambiar contraseña"
                             className="p-1.5 rounded-xl text-slate-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/50 transition-colors cursor-pointer"
@@ -629,7 +748,7 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({ onRefreshAll
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-xs">
             <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
               <Layers className="w-4 h-4 text-sky-600" />
-              Distribución de las 75 Preguntas por Competencia Institucional
+              Distribución de las {preguntas.length || 75} Preguntas por Competencia Institucional
             </h4>
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
               {[
@@ -828,6 +947,151 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({ onRefreshAll
                                 menuClassName="w-64 text-left"
                               />
                             </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* VISTA 3: HISTORIAL DE AUDITORÍA Y LOGS */}
+      {/* ======================================================== */}
+      {activeSubTab === 'logs' && (
+        <div className="space-y-6">
+          {/* BARRA SUPERIOR DE LOGS */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                <History className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-heading font-black text-base text-slate-900 dark:text-white">
+                  Historial de Auditoría y Eventos del Sistema
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {logsTotal} evento(s) registrado(s) en la base de datos PostgreSQL
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <button
+                onClick={() => loadHistorialPasswords()}
+                className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Lock className="w-3.5 h-3.5 text-amber-500" />
+                <span>Historial de Contraseñas</span>
+              </button>
+              <button
+                onClick={loadLogs}
+                className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-all cursor-pointer"
+                title="Recargar logs"
+              >
+                <RefreshCw className={`w-4 h-4 ${logsLoading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+          </div>
+
+          {/* FILTROS DE LOGS */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Buscar por usuario (ej. admin, oti)..."
+                value={logFilterUser}
+                onChange={(e) => setLogFilterUser(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && loadLogs()}
+                className="w-full pl-10 pr-4 py-2 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <select
+                value={logFilterModulo}
+                onChange={(e) => setLogFilterModulo(e.target.value)}
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-sky-500 cursor-pointer"
+              >
+                <option value="TODOS">Todos los Módulos</option>
+                <option value="AUTENTICACION">Módulo Autenticación</option>
+                <option value="USUARIOS">Módulo Usuarios</option>
+                <option value="MATRIZ">Módulo Matriz de Evaluación</option>
+                <option value="EVIDENCIAS">Módulo Evidencias</option>
+              </select>
+              <button
+                onClick={loadLogs}
+                className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer whitespace-nowrap"
+              >
+                Filtrar
+              </button>
+            </div>
+          </div>
+
+          {/* TABLA DE AUDITORÍA */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/50 text-[10px] uppercase font-black tracking-wider text-slate-400">
+                    <th className="py-3 px-4 w-12 text-center">#</th>
+                    <th className="py-3 px-4 w-40">Fecha y Hora</th>
+                    <th className="py-3 px-4 w-28">Usuario</th>
+                    <th className="py-3 px-4 w-36">Acción</th>
+                    <th className="py-3 px-4 w-32">Módulo</th>
+                    <th className="py-3 px-4">Detalle del Evento</th>
+                    <th className="py-3 px-4 w-28">IP Origen</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                  {logs.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-slate-400">
+                        <History className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                        No se encontraron registros de auditoría con los filtros aplicados.
+                      </td>
+                    </tr>
+                  ) : (
+                    logs.map((log) => {
+                      const isSuccess = log.accion.includes('EXITOSO') || log.accion.includes('CREAR');
+                      const isDanger = log.accion.includes('FALLIDO') || log.accion.includes('DESACTIVAR');
+                      const isWarning = log.accion.includes('PASSWORD') || log.accion.includes('MODIFICAR');
+                      return (
+                        <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                          <td className="py-3 px-4 text-center font-mono text-slate-400 text-[11px] font-bold">
+                            {log.id}
+                          </td>
+                          <td className="py-3 px-4 text-slate-600 dark:text-slate-400 font-mono text-[11px] whitespace-nowrap">
+                            {log.fecha_registro}
+                          </td>
+                          <td className="py-3 px-4 font-bold text-slate-900 dark:text-white font-mono">
+                            @{log.username}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase border ${
+                              isSuccess
+                                ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+                                : isDanger
+                                ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800'
+                                : isWarning
+                                ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800'
+                                : 'bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-400 border-sky-200 dark:border-sky-800'
+                            }`}>
+                              {log.accion}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-slate-500 font-semibold text-[11px]">
+                            {log.modulo}
+                          </td>
+                          <td className="py-3 px-4 text-slate-700 dark:text-slate-300 max-w-md break-words">
+                            {log.detalle}
+                          </td>
+                          <td className="py-3 px-4 font-mono text-[11px] text-slate-400">
+                            {log.ip_origen || '-'}
                           </td>
                         </tr>
                       );
@@ -1119,6 +1383,97 @@ export const AdminUsersModule: React.FC<AdminUsersModuleProps> = ({ onRefreshAll
           </div>
         </div>
       )}
+
+      {/* ======================================================== */}
+      {/* MODAL 4: HISTORIAL DE CONTRASEÑAS USADAS */}
+      {/* ======================================================== */}
+      {isHistorialModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                  <Lock className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-heading font-black text-base text-slate-900 dark:text-white">
+                    Historial de Contraseñas Utilizadas
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {historialUserTitle || 'Registro histórico de contraseñas (hashes protegidos)'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsHistorialModalOpen(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Por políticas de seguridad, las contraseñas en esta lista están almacenadas como hash unidireccional PBKDF2 y <strong className="text-slate-700 dark:text-slate-300">no pueden ser reutilizadas</strong> por el usuario.
+            </p>
+
+            <div className="max-h-80 overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-2xl">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/50 text-[10px] uppercase font-black text-slate-400">
+                    <th className="py-2.5 px-3">#</th>
+                    <th className="py-2.5 px-3">Usuario</th>
+                    <th className="py-2.5 px-3">Hash Criptográfico</th>
+                    <th className="py-2.5 px-3">Fecha de Registro</th>
+                    <th className="py-2.5 px-3">Motivo</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                  {historialPasswords.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-slate-400">
+                        No hay historial registrado para este usuario.
+                      </td>
+                    </tr>
+                  ) : (
+                    historialPasswords.map((h, i) => (
+                      <tr key={h.id || i} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                        <td className="py-2 px-3 text-slate-400 font-mono text-[11px]">{i + 1}</td>
+                        <td className="py-2 px-3 font-bold font-mono text-slate-800 dark:text-slate-200">@{h.username}</td>
+                        <td className="py-2 px-3 font-mono text-[10px] text-slate-500 bg-slate-100/50 dark:bg-slate-950/50 px-2 py-0.5 rounded">
+                          {h.password_hash}
+                        </td>
+                        <td className="py-2 px-3 text-slate-500 font-mono text-[11px] whitespace-nowrap">{h.fecha_registro}</td>
+                        <td className="py-2 px-3 text-slate-600 dark:text-slate-400 text-[11px]">{h.motivo}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                onClick={() => setIsHistorialModalOpen(false)}
+                className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIRMACIÓN MODERNO (REEMPLAZA confirm() NATIVO) */}
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        onClose={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmConfig.onConfirm}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        cancelText={confirmConfig.cancelText}
+        variant={confirmConfig.variant}
+      />
 
     </div>
   );

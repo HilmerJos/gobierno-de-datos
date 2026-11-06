@@ -1,25 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { CustomSelect, SelectOption } from './CustomSelect';
 import { Pregunta } from '../types';
-import { X, Upload, Link2 } from 'lucide-react';
+import { X, Upload, Link2, Building2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 interface EvidenciasModalProps {
   isOpen: boolean;
   onClose: () => void;
-  preguntas: Pregunta[];
+  preguntas?: Pregunta[];
   initialCodigo?: string;
+  selectedPregunta?: Pregunta | null;
   onSaveEvidencia: (data: any, file: File | null) => Promise<void>;
 }
 
 export const EvidenciasModal: React.FC<EvidenciasModalProps> = ({
   isOpen,
   onClose,
-  preguntas,
+  preguntas = [],
   initialCodigo = '',
+  selectedPregunta,
   onSaveEvidencia
 }) => {
-  const [preguntaCodigo, setPreguntaCodigo] = useState(initialCodigo || (preguntas[0]?.codigo || '1.1'));
+  // Identificar la pregunta objetivo activa
+  const targetPregunta = selectedPregunta || preguntas.find(q => q.codigo === (initialCodigo || '')) || preguntas[0];
+
+  const [preguntaCodigo, setPreguntaCodigo] = useState(initialCodigo || targetPregunta?.codigo || '1.1');
   const [origen, setOrigen] = useState('Interno');
   const [tipoEvidencia, setTipoEvidencia] = useState('Documento');
   const [nombreEvidencia, setNombreEvidencia] = useState('');
@@ -31,6 +36,32 @@ export const EvidenciasModal: React.FC<EvidenciasModalProps> = ({
   const [comentariosRevision] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Sincronizar el código de pregunta cuando se abre el modal con una nueva pregunta
+  useEffect(() => {
+    if (initialCodigo) {
+      setPreguntaCodigo(initialCodigo);
+    } else if (targetPregunta?.codigo) {
+      setPreguntaCodigo(targetPregunta.codigo);
+    }
+  }, [initialCodigo, targetPregunta, isOpen]);
+
+  // Si la pregunta tiene área responsable, prellenarla por defecto si está vacía
+  useEffect(() => {
+    if (isOpen && targetPregunta?.area_responsable && !areaUnidad) {
+      setAreaUnidad(targetPregunta.area_responsable);
+    }
+  }, [isOpen, targetPregunta, areaUnidad]);
+
+  // Limpiar campos temporales al cerrar el modal
+  useEffect(() => {
+    if (!isOpen) {
+      setNombreEvidencia('');
+      setRutaOEnlace('');
+      setDescripcion('');
+      setSelectedFile(null);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -47,12 +78,6 @@ export const EvidenciasModal: React.FC<EvidenciasModalProps> = ({
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
-
-  const preguntaOptions: SelectOption[] = preguntas.map(q => ({
-    value: q.codigo,
-    label: `[${q.codigo}] ${q.titulo ? q.titulo + ' - ' : ''}${q.enunciado.substring(0, 55)}...`,
-    sublabel: `Dimensión ${q.dimension_codigo}`
-  }));
 
   const origenOptions: SelectOption[] = [
     { value: 'Interno', label: 'Interno', sublabel: 'Producido o emitido por la entidad institucional' },
@@ -84,10 +109,12 @@ export const EvidenciasModal: React.FC<EvidenciasModalProps> = ({
       return;
     }
 
+    const cod = targetPregunta?.codigo || preguntaCodigo;
+
     setIsSubmitting(true);
     try {
       await onSaveEvidencia({
-        pregunta_codigo: preguntaCodigo,
+        pregunta_codigo: cod,
         origen,
         tipo_evidencia: tipoEvidencia,
         nombre_evidencia: nombreEvidencia,
@@ -114,23 +141,34 @@ export const EvidenciasModal: React.FC<EvidenciasModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header Modal - ESTÁTICO */}
-        <div className="flex items-center justify-between px-5 sm:px-7 py-3.5 sm:py-4 border-b border-slate-200 dark:border-slate-800 flex-shrink-0 bg-white dark:bg-slate-900">
-          <div>
-            <h2 className="font-heading font-extrabold text-base sm:text-xl text-slate-900 dark:text-white">
-              Registrar Medio de Verificación
-            </h2>
-            <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Inventario oficial de evidencias de Gobierno de Datos (PCM / CND)
-            </p>
+        <div className="flex items-start justify-between px-5 sm:px-7 py-4 border-b border-slate-200 dark:border-slate-800 flex-shrink-0 bg-white dark:bg-slate-900">
+          <div className="space-y-1.5 pr-4 flex-1">
+            {/* Texto de la pregunta vinculado directamente en la cabecera del modal */}
+            <div className="pt-2 mt-1  space-y-1">
+              <div className="flex flex-wrap items-center gap-1.5 uppercase text-xs sm:text-sm font-extrabold text-sky-600 dark:text-sky-400">
+                <span className="px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950/80 text-sky-700 dark:text-sky-300 font-mono text-xs font-black border border-sky-200 dark:border-sky-800">
+                  {targetPregunta?.codigo || preguntaCodigo}
+                </span>
+                <span>
+                  {targetPregunta?.titulo ? `${targetPregunta.titulo}` : ''}
+                </span>
+              </div>
+              {targetPregunta?.enunciado && (
+                <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 leading-snug">
+                  {targetPregunta.enunciado}
+                </p>
+              )}
+            </div>
           </div>
+
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 sm:p-2 rounded-2xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="p-1.5 sm:p-2 rounded-2xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer flex-shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
@@ -140,15 +178,6 @@ export const EvidenciasModal: React.FC<EvidenciasModalProps> = ({
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
           {/* Contenido scrolleable (solo esta área hace scroll) */}
           <div className="flex-1 overflow-y-auto px-5 sm:px-7 py-4 sm:py-5 space-y-4">
-            <CustomSelect
-              label="Código y Pregunta a Vincular"
-              required
-              options={preguntaOptions}
-              value={preguntaCodigo}
-              onChange={setPreguntaCodigo}
-              placeholder="Seleccionar pregunta vinculada..."
-            />
-
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <CustomSelect
                 label="Origen de la Evidencia"
@@ -264,14 +293,14 @@ export const EvidenciasModal: React.FC<EvidenciasModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-2xl border border-slate-300 dark:border-slate-700 text-xs sm:text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors"
+              className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-2xl border border-slate-300 dark:border-slate-700 text-xs sm:text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2 sm:px-6 sm:py-2.5 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs sm:text-sm shadow-md transition-all disabled:opacity-50"
+              className="px-5 py-2 sm:px-6 sm:py-2.5 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs sm:text-sm shadow-md transition-all disabled:opacity-50 cursor-pointer"
             >
               {isSubmitting ? 'Guardando...' : 'Guardar Evidencia'}
             </button>
